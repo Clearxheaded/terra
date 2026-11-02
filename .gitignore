@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Production build
+dist/
+
+# Local configuration and progress docs
+AGENTS.md
+PROGRESS.md
+
+# Environment variables
+.env
+.env.local
+*.env
+
+# System / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Vitest / Test coverage
+coverage/
+
