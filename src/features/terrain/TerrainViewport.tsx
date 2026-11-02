@@ -1,9 +1,14 @@
 import React, { useEffect, useRef } from 'react';
+import type { AnalysisLayerType } from '@/features/analysis/types';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import { TerrainViewer } from './terrain-viewer';
 
 interface TerrainViewportProps {
   grid: ElevationGrid | null;
+  activeLayer: AnalysisLayerType;
+  activeLayerData: Float32Array | null;
+  sunAzimuth: number;
+  sunAltitude: number;
   verticalExaggeration: number;
   wireframe: boolean;
   isLoading: boolean;
@@ -13,6 +18,10 @@ interface TerrainViewportProps {
 
 export const TerrainViewport: React.FC<TerrainViewportProps> = ({
   grid,
+  activeLayer,
+  activeLayerData,
+  sunAzimuth,
+  sunAltitude,
   verticalExaggeration,
   wireframe,
   isLoading,
@@ -41,8 +50,20 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
   // Update grid when changed
   useEffect(() => {
     if (!viewerRef.current || !grid) return;
-    viewerRef.current.loadGrid(grid);
+    viewerRef.current.loadGrid(grid, activeLayer, activeLayerData);
   }, [grid]);
+
+  // Update layer colors in-place
+  useEffect(() => {
+    if (!viewerRef.current || !grid) return;
+    viewerRef.current.updateLayerColors(grid, activeLayer, activeLayerData);
+  }, [grid, activeLayer, activeLayerData]);
+
+  // Update sun position in 3D scene
+  useEffect(() => {
+    if (!viewerRef.current) return;
+    viewerRef.current.updateSunPosition(sunAzimuth, sunAltitude);
+  }, [sunAzimuth, sunAltitude]);
 
   // Update vertical exaggeration without regenerating geometry
   useEffect(() => {
@@ -103,4 +124,3 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
     </main>
   );
 };
-

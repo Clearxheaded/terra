@@ -4,8 +4,9 @@ Terra is an open-source, browser-based geospatial analysis and 3D terrain visual
 
 ---
 
-## Implemented Features (Milestone 1 — Terrain Foundation)
+## Implemented Features
 
+### Milestone 1 — Terrain Foundation
 - **Reusable Geospatial Data Model (`ElevationGrid`)**:
   - Strongly typed, memory-efficient representation using `Float32Array`.
   - Full raster coordinate transformations via standard 6-parameter affine georeferencing matrices (`gridToGeo` and `geoToGrid`).
@@ -31,6 +32,31 @@ Terra is an open-source, browser-based geospatial analysis and 3D terrain visual
 - **Synthetic Terrain Generator**:
   - Deterministic mathematical terrain generators (Mountain, Valley, Plane, Pyramid, Depression) for automated testing and quick visual exploration.
   - Pre-bundled sample DEM dataset (`/samples/sample_dem.tif`).
+
+### Milestone 2 — Terrain Analysis
+- **Topographic Slope (Horn's 3x3 Finite Differences)**:
+  - Strongly typed, modular calculation independent of React.
+  - Accounts for real pixel spacing ($dx, dy$) in geographic or projected metric units.
+  - Supports output in angular degrees ($0^\circ–90^\circ$) and gradient percentage ($0\%–\infty\%$).
+  - Boundary-safe partial derivative evaluation preventing NoData corruption at grid edges.
+- **Directional Aspect (Compass Azimuth $0^\circ–360^\circ$)**:
+  - Mathematically sound downhill facing calculation clockwise from true North ($0^\circ$ North, $90^\circ$ East, $180^\circ$ South, $270^\circ$ West).
+  - Explicit detection and handling of flat terrain with sentinel value `-1`.
+  - Directional statistics: Circular mean azimuth calculation avoiding angular wrapping artifacts.
+  - 8-cardinal histogram binning identifying dominant slope facing direction and distribution.
+- **Analytical Shaded Relief (Hillshade)**:
+  - Lambertian cosine illumination model based on surface normals and solar vector.
+  - Interactive sun azimuth ($0^\circ–360^\circ$) and solar altitude ($0^\circ–90^\circ$) parameters.
+  - Real-time Three.js directional light synchronization with solar controls.
+- **Perceptually Uniform Color Ramps & Dynamic Draping**:
+  - Slope warning gradient (emerald green $\to$ amber $\to$ orange $\to$ crimson red).
+  - Aspect cyclic 360° multi-hue palette with seamless North closure and neutral flat grey.
+  - Hillshade grayscale illumination ramp ($0$ shadow $\to$ $255$ highlight).
+  - In-place vertex color buffer updates (`needsUpdate = true`) switching layers at 60 FPS without reallocating geometry.
+- **UI Analysis Workspace & Legends**:
+  - Analysis layer selector (Elevation, Slope, Aspect, Hillshade).
+  - Interactive gradient legend cards with range labels.
+  - Live statistical summaries (Mean Slope, Max Slope, Dominant Facing %, Circular Mean, Mean Shading).
 
 ---
 
@@ -85,16 +111,17 @@ npm run build
 
 ## Current Limitations
 
-- **Coordinate Units**: Geographic rasters (WGS 84 in degrees) use an approximate latitudinal meter-conversion factor. Full coordinate reprojection (e.g. via Proj4) is planned for later milestones.
-- **Dataset Size**: Rasters are processed on the main thread in Milestone 1. Very large rasters (>2000x2000) should be resampled before mesh generation. Dedicated Web Worker offloading is scheduled for Milestone 5.
-- **Depression Filling & Hydrology**: Flow direction, flow accumulation, and watershed delineation are out of scope for Milestone 1 and will be developed in Milestone 3.
+- **Coordinate Reprojection**: Geographic rasters (WGS 84 in degrees) use an approximate latitudinal metric factor ($111,320\text{ m/deg}$). Full coordinate reprojection (e.g. via Proj4) is planned for future milestones.
+- **Raster Processing Concurrency**: Large rasters are processed synchronously; Web Worker offloading is scheduled for Milestone 5.
+- **Hydrological Depression Preprocessing**: Sink filling and hydrological routing are scheduled for Milestone 3.
 
 ---
 
 ## Next Milestone
 
-- **Milestone 2: Terrain Analysis**:
-  - Slope calculation (degrees and percentage).
-  - Aspect calculation (compass azimuth 0–360°).
-  - Analytical hillshade rendering with customizable sun azimuth and elevation angles.
-  - Specialized analysis color ramps for slope and aspect.
+- **Milestone 3 — Hydrology**:
+  - D8 flow direction calculation.
+  - Depression and flat handling (sink filling / carving).
+  - Flow accumulation raster.
+  - Stream network and drainage path extraction.
+  - Contributing watershed delineation from arbitrary pour points.

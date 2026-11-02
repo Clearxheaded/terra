@@ -1,10 +1,29 @@
 import React, { useRef } from 'react';
+import type {
+  AnalysisLayerType,
+  AspectResult,
+  HillshadeResult,
+  SlopeResult,
+  SlopeUnit,
+} from '@/features/analysis/types';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import type { SyntheticTerrainOptions } from '@/lib/geospatial/synthetic-terrain';
+import { AnalysisPanel } from './AnalysisPanel';
 
 interface SidebarProps {
   grid: ElevationGrid | null;
   warnings: string[];
+  activeLayer: AnalysisLayerType;
+  onLayerChange: (layer: AnalysisLayerType) => void;
+  slopeResult: SlopeResult | null;
+  aspectResult: AspectResult | null;
+  hillshadeResult: HillshadeResult | null;
+  slopeUnit: SlopeUnit;
+  onSlopeUnitChange: (unit: SlopeUnit) => void;
+  sunAzimuth: number;
+  onSunAzimuthChange: (val: number) => void;
+  sunAltitude: number;
+  onSunAltitudeChange: (val: number) => void;
   verticalExaggeration: number;
   onVerticalExaggerationChange: (val: number) => void;
   wireframe: boolean;
@@ -19,6 +38,17 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({
   grid,
   warnings,
+  activeLayer,
+  onLayerChange,
+  slopeResult,
+  aspectResult,
+  hillshadeResult,
+  slopeUnit,
+  onSlopeUnitChange,
+  sunAzimuth,
+  onSunAzimuthChange,
+  sunAltitude,
+  onSunAltitudeChange,
   verticalExaggeration,
   onVerticalExaggerationChange,
   wireframe,
@@ -67,6 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
         <div style={{ marginTop: '0.85rem' }}>
           <button
+            type="button"
             className="button"
             style={{ width: '100%', marginBottom: '0.5rem' }}
             onClick={onLoadSampleFile}
@@ -81,23 +112,39 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <section className="sidebar-section">
         <h2 className="section-title">Synthetic Terrains</h2>
         <div className="button-group">
-          <button className="button" onClick={() => onLoadSynthetic('mountain')}>
+          <button type="button" className="button" onClick={() => onLoadSynthetic('mountain')}>
             Mountain
           </button>
-          <button className="button" onClick={() => onLoadSynthetic('valley')}>
+          <button type="button" className="button" onClick={() => onLoadSynthetic('valley')}>
             Valley
           </button>
-          <button className="button" onClick={() => onLoadSynthetic('pyramid')}>
+          <button type="button" className="button" onClick={() => onLoadSynthetic('pyramid')}>
             Pyramid
           </button>
-          <button className="button" onClick={() => onLoadSynthetic('plane')}>
+          <button type="button" className="button" onClick={() => onLoadSynthetic('plane')}>
             Plane
           </button>
-          <button className="button" onClick={() => onLoadSynthetic('depression')}>
+          <button type="button" className="button" onClick={() => onLoadSynthetic('depression')}>
             Depression
           </button>
         </div>
       </section>
+
+      {/* Terrain Analysis Layer & Controls */}
+      <AnalysisPanel
+        grid={grid}
+        activeLayer={activeLayer}
+        onLayerChange={onLayerChange}
+        slopeResult={slopeResult}
+        aspectResult={aspectResult}
+        hillshadeResult={hillshadeResult}
+        slopeUnit={slopeUnit}
+        onSlopeUnitChange={onSlopeUnitChange}
+        sunAzimuth={sunAzimuth}
+        onSunAzimuthChange={onSunAzimuthChange}
+        sunAltitude={sunAltitude}
+        onSunAltitudeChange={onSunAltitudeChange}
+      />
 
       {/* 3D Visualization Controls */}
       <section className="sidebar-section">
@@ -130,7 +177,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </label>
         </div>
 
-        <button className="button" style={{ width: '100%' }} onClick={onResetCamera}>
+        <button type="button" className="button" style={{ width: '100%' }} onClick={onResetCamera}>
           Reset Camera View
         </button>
       </section>
@@ -204,4 +251,3 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
-

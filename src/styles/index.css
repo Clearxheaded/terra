@@ -379,3 +379,132 @@ html, body, #root {
   to { transform: rotate(360deg); }
 }
 
+/* Analysis Layers Selector */
+.layer-tabs {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.layer-tab {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  border-radius: 6px;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: all 0.15s ease-in-out;
+}
+
+.layer-tab:hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--text-primary);
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+.layer-tab.active {
+  background: var(--accent-primary);
+  color: #fff;
+  border-color: var(--accent-hover);
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+}
+
+/* Legend and Color Ramps */
+.legend-card {
+  background: var(--bg-tertiary);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 0.65rem 0.8rem;
+  margin-bottom: 0.85rem;
+}
+
+.legend-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.45rem;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.legend-bar {
+  height: 12px;
+  border-radius: 4px;
+  width: 100%;
+  margin-bottom: 0.35rem;
+  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.4);
+}
+
+.legend-bar-elevation {
+  background: linear-gradient(
+    to right,
+    rgb(46, 89, 56) 0%,
+    rgb(89, 140, 64) 15%,
+    rgb(184, 191, 89) 35%,
+    rgb(217, 184, 115) 55%,
+    rgb(166, 122, 89) 75%,
+    rgb(153, 158, 166) 90%,
+    rgb(245, 247, 255) 100%
+  );
+}
+
+.legend-bar-slope {
+  background: linear-gradient(
+    to right,
+    #22c55e 0%,
+    #84cc16 20%,
+    #eab308 42%,
+    #f97316 63%,
+    #ef4444 83%,
+    #7f1d1d 100%
+  );
+}
+
+.legend-bar-aspect {
+  background: linear-gradient(
+    to right,
+    #38bdf8 0%,
+    #2dd4bf 12.5%,
+    #22c55e 25%,
+    #eab308 37.5%,
+    #ef4444 50%,
+    #ec4899 62.5%,
+    #a855f7 75%,
+    #6366f1 87.5%,
+    #38bdf8 100%
+  );
+}
+
+.legend-bar-hillshade {
+  background: linear-gradient(to right, #000 0%, #808080 50%, #fff 100%);
+}
+
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+}
+
+/* Badges */
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+}
+
+

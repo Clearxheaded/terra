@@ -1,14 +1,24 @@
 import * as THREE from 'three';
+import type { AnalysisLayerType } from '@/features/analysis/types';
+import {
+  evaluateAspectColor,
+  evaluateHillshadeColor,
+  evaluateSlopeColor,
+} from '@/features/analysis/color-ramps';
 import { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import { evaluateColorRamp, TOPOGRAPHIC_RAMP, type ColorStop } from './color-ramps';
 
 export interface TerrainMeshOptions {
   /** Target maximum horizontal dimension in Three.js world units (default: 100) */
   worldSize?: number;
-  /** Custom color ramp */
+  /** Custom color ramp for elevation */
   colorRamp?: readonly ColorStop[];
   /** Wireframe mode */
   wireframe?: boolean;
+  /** Active analysis layer for vertex coloring */
+  layer?: AnalysisLayerType;
+  /** Pre-calculated data array for active analysis layer */
+  layerData?: Float32Array | null;
 }
 
 export interface TerrainGeometryData {
@@ -21,14 +31,93 @@ export interface TerrainGeometryData {
 }
 
 /**
+ * Computes RGB vertex color based on active analysis layer.
+ */
+function getVertexRgb(
+  layer: AnalysisLayerType,
+  rawVal: number,
+  idx: number,
+  statsMin: number,
+  elevationRange: number,
+  colorRamp: readonly ColorStop[],
+  layerData?: Float32Array | null
+): [r: number, g: number, b: number] {
+  if (layer === 'elevation') {
+    const normalizedElev = (rawVal - statsMin) / elevationRange;
+    return evaluateColorRamp(normalizedElev, colorRamp);
+  }
+  if (layer === 'slope') {
+    const val = layerData ? layerData[idx]! : 0;
+    return evaluateSlopeColor(val);
+  }
+  if (layer === 'aspect') {
+    const val = layerData ? layerData[idx]! : -1;
+    return evaluateAspectColor(val);
+  }
+  if (layer === 'hillshade') {
+    const val = layerData ? layerData[idx]! : 180;
+    return evaluateHillshadeColor(val);
+  }
+  return [0.5, 0.5, 0.5];
+}
+
+/**
+ * In-place updates the vertex color buffer attribute without reallocating geometry.
+ */
+export function updateTerrainGeometryColors(
+  geometry: THREE.BufferGeometry,
+  grid: ElevationGrid,
+  layer: AnalysisLayerType = 'elevation',
+  layerData?: Float32Array | null,
+  colorRamp: readonly ColorStop[] = TOPOGRAPHIC_RAMP
+): void {
+  const colorsAttr = geometry.getAttribute('color') as THREE.BufferAttribute | undefined;
+  if (!colorsAttr) return;
+
+  const colors = colorsAttr.array as Float32Array;
+  const width = grid.width;
+  const height = grid.height;
+  const stats = grid.getStats();
+  const elevationRange = Math.max(stats.max - stats.min, 1);
+
+  for (let r = 0; r < height; r++) {
+    const rowOffset = r * width;
+    for (let c = 0; c < width; c++) {
+      const idx = rowOffset + c;
+      const attrOffset3 = idx * 3;
+      const rawVal = grid.data[idx]!;
+
+      if (grid.isNoData(rawVal)) {
+        colors[attrOffset3] = 0.12;
+        colors[attrOffset3 + 1] = 0.14;
+        colors[attrOffset3 + 2] = 0.17;
+        continue;
+      }
+
+      const rgb = getVertexRgb(layer, rawVal, idx, stats.min, elevationRange, colorRamp, layerData);
+      colors[attrOffset3] = rgb[0];
+      colors[attrOffset3 + 1] = rgb[1];
+      colors[attrOffset3 + 2] = rgb[2];
+    }
+  }
+
+  colorsAttr.needsUpdate = true;
+}
+
+/**
  * Builds a THREE.BufferGeometry from an ElevationGrid with vertex positions,
- * normals, UV coordinates, and elevation-based vertex colors.
+ * normals, UV coordinates, and analysis-aware vertex colors.
  */
 export function buildTerrainGeometry(
   grid: ElevationGrid,
   options: TerrainMeshOptions = {}
 ): TerrainGeometryData {
-  const { worldSize = 100, colorRamp = TOPOGRAPHIC_RAMP } = options;
+  const {
+    worldSize = 100,
+    colorRamp = TOPOGRAPHIC_RAMP,
+    layer = 'elevation',
+    layerData = null,
+  } = options;
 
   const width = grid.width;
   const height = grid.height;
@@ -88,8 +177,7 @@ export function buildTerrainGeometry(
         rgb = [0.12, 0.14, 0.17]; // Dim slate for void / NoData
       } else {
         y = (rawVal - stats.min) * elevationScale;
-        const normalizedElev = (rawVal - stats.min) / elevationRange;
-        rgb = evaluateColorRamp(normalizedElev, colorRamp);
+        rgb = getVertexRgb(layer, rawVal, idx, stats.min, elevationRange, colorRamp, layerData);
       }
 
       positions[attrOffset3] = x;
@@ -168,4 +256,3 @@ export function createTerrainMesh(
   mesh.receiveShadow = true;
   return mesh;
 }
-

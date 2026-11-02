@@ -1,7 +1,12 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { AnalysisLayerType } from '@/features/analysis/types';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
-import { buildTerrainGeometry, createTerrainMesh } from './terrain-mesh';
+import {
+  buildTerrainGeometry,
+  createTerrainMesh,
+  updateTerrainGeometryColors,
+} from './terrain-mesh';
 
 export interface TerrainViewerOptions {
   container: HTMLElement;
@@ -15,6 +20,10 @@ export class TerrainViewer {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly controls: OrbitControls;
   private readonly resizeObserver: ResizeObserver;
+
+  private sunLight: THREE.DirectionalLight | null = null;
+  private fillLight: THREE.DirectionalLight | null = null;
+  private ambientLight: THREE.AmbientLight | null = null;
 
   private currentMesh: THREE.Mesh | null = null;
   private currentGeometry: THREE.BufferGeometry | null = null;
@@ -71,29 +80,58 @@ export class TerrainViewer {
 
   private setupLighting(): void {
     // Ambient light for general visibility
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
-    this.scene.add(ambientLight);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
+    this.scene.add(this.ambientLight);
 
-    // Primary directional light (simulating sun from Northwest / 315 deg azimuth at 45 deg elevation)
-    const sunLight = new THREE.DirectionalLight(0xfffaed, 1.4);
-    sunLight.position.set(-80, 100, -80);
-    this.scene.add(sunLight);
+    // Primary directional light
+    this.sunLight = new THREE.DirectionalLight(0xfffaed, 1.4);
+    this.scene.add(this.sunLight);
 
     // Secondary fill light from opposite quadrant to soften deep shadows
-    const fillLight = new THREE.DirectionalLight(0x90b0d0, 0.4);
-    fillLight.position.set(80, 40, 80);
-    this.scene.add(fillLight);
+    this.fillLight = new THREE.DirectionalLight(0x90b0d0, 0.4);
+    this.scene.add(this.fillLight);
+
+    // Default sun direction: 315° Azimuth, 45° Altitude
+    this.updateSunPosition(315, 45);
+  }
+
+  /**
+   * Updates Three.js directional sun light position in world space.
+   * Coordinate alignment: East is +X, North is -Z, Up is +Y.
+   */
+  updateSunPosition(azimuthDeg: number, altitudeDeg: number): void {
+    if (!this.sunLight || !this.fillLight) return;
+
+    const degToRad = Math.PI / 180;
+    const azRad = azimuthDeg * degToRad;
+    const altRad = Math.max(0.01, Math.min(90, altitudeDeg)) * degToRad;
+
+    const r = 160;
+    const x = r * Math.cos(altRad) * Math.sin(azRad);
+    const y = r * Math.sin(altRad);
+    const z = -r * Math.cos(altRad) * Math.cos(azRad);
+
+    this.sunLight.position.set(x, y, z);
+
+    // Secondary fill light opposite
+    this.fillLight.position.set(-x * 0.5, 40, -z * 0.5);
   }
 
   /**
    * Loads and displays a new ElevationGrid.
    */
-  loadGrid(grid: ElevationGrid): void {
+  loadGrid(
+    grid: ElevationGrid,
+    layer: AnalysisLayerType = 'elevation',
+    layerData?: Float32Array | null
+  ): void {
     this.clearCurrentMesh();
 
     const { geometry } = buildTerrainGeometry(grid, {
       worldSize: 100,
       wireframe: this.wireframe,
+      layer,
+      layerData,
     });
 
     this.currentGeometry = geometry;
@@ -102,6 +140,18 @@ export class TerrainViewer {
 
     this.scene.add(this.currentMesh);
     this.resetCamera();
+  }
+
+  /**
+   * Updates vertex colors in-place without rebuilding geometry buffers.
+   */
+  updateLayerColors(
+    grid: ElevationGrid,
+    layer: AnalysisLayerType,
+    layerData?: Float32Array | null
+  ): void {
+    if (!this.currentGeometry) return;
+    updateTerrainGeometryColors(this.currentGeometry, grid, layer, layerData);
   }
 
   /**
@@ -186,4 +236,3 @@ export class TerrainViewer {
     }
   }
 }
-
