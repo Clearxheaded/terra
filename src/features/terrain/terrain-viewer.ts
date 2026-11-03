@@ -21,6 +21,17 @@ export interface TerrainViewerOptions {
   initialExaggeration?: number;
 }
 
+export interface WebGLRenderStats {
+  fps: number;
+  frameTimeMs: number;
+  drawCalls: number;
+  triangles: number;
+  vertices: number;
+  geometriesCount: number;
+  texturesCount: number;
+  lodStride: number;
+}
+
 export class TerrainViewer {
   private readonly container: HTMLElement;
   private readonly scene: THREE.Scene;
@@ -53,6 +64,14 @@ export class TerrainViewer {
 
   private verticalExaggeration = 1.0;
   private wireframe = false;
+
+  // Real-time WebGL performance metrics
+  private lastStatsTimestamp = performance.now();
+  private lastFrameTimestamp = performance.now();
+  private frameCount = 0;
+  private currentFps = 60;
+  private currentFrameTime = 16.6;
+  private onStatsUpdate?: (stats: WebGLRenderStats) => void;
 
   constructor(options: TerrainViewerOptions) {
     this.container = options.container;
@@ -147,7 +166,8 @@ export class TerrainViewer {
     layerData?: Float32Array | null,
     maxLayerVal = 1.0,
     watershedMask?: Uint8Array | null,
-    blendOptions?: LayerBlendOptions
+    blendOptions?: LayerBlendOptions,
+    lodOptions?: { lodStride?: number; maxVertices?: number }
   ): void {
     this.clearCurrentMesh();
 
@@ -159,6 +179,8 @@ export class TerrainViewer {
       maxLayerVal,
       watershedMask,
       blendOptions,
+      lodStride: lodOptions?.lodStride,
+      maxVertices: lodOptions?.maxVertices,
     });
 
     this.currentGeomData = geomData;
@@ -190,7 +212,8 @@ export class TerrainViewer {
       maxLayerVal,
       watershedMask,
       undefined,
-      blendOptions
+      blendOptions,
+      this.currentGeomData?.lodStride ?? 1
     );
   }
 
@@ -617,10 +640,51 @@ export class TerrainViewer {
   private startAnimationLoop = (): void => {
     if (this.isDisposed) return;
 
+    const now = performance.now();
+    this.currentFrameTime = Math.max(0.1, now - this.lastFrameTimestamp);
+    this.lastFrameTimestamp = now;
+    this.frameCount++;
+
+    if (now - this.lastStatsTimestamp >= 1000) {
+      this.currentFps = Math.round((this.frameCount * 1000) / Math.max(now - this.lastStatsTimestamp, 1));
+      this.frameCount = 0;
+      this.lastStatsTimestamp = now;
+
+      if (this.onStatsUpdate) {
+        this.onStatsUpdate(this.getRenderStats());
+      }
+    }
+
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
     this.animationFrameId = requestAnimationFrame(this.startAnimationLoop);
   };
+
+  /**
+   * Registers a callback listener for real-time WebGL rendering statistics.
+   */
+  public setOnStatsUpdate(callback?: (stats: WebGLRenderStats) => void): void {
+    this.onStatsUpdate = callback;
+  }
+
+  /**
+   * Returns current real-time WebGL rendering statistics.
+   */
+  public getRenderStats(): WebGLRenderStats {
+    const renderInfo = this.renderer.info.render;
+    const memoryInfo = this.renderer.info.memory;
+
+    return {
+      fps: this.currentFps,
+      frameTimeMs: Math.round(this.currentFrameTime * 10) / 10,
+      drawCalls: renderInfo.calls,
+      triangles: renderInfo.triangles,
+      vertices: this.currentGeomData?.vertexCount ?? 0,
+      geometriesCount: memoryInfo.geometries,
+      texturesCount: memoryInfo.textures,
+      lodStride: this.currentGeomData?.lodStride ?? 1,
+    };
+  }
 
   /**
    * Disposes all WebGL memory, materials, geometries, and listeners.

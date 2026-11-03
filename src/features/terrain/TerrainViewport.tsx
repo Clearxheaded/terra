@@ -6,7 +6,7 @@ import { TerrainHUD, type TerrainHoverData } from '@/components/TerrainHUD';
 import type { FlowPathPoint } from '@/features/hydrology/types';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import type { LayerBlendOptions } from './terrain-mesh';
-import { TerrainViewer } from './terrain-viewer';
+import { TerrainViewer, type WebGLRenderStats } from './terrain-viewer';
 
 export interface TerrainViewportProps {
   grid: ElevationGrid | null;
@@ -84,6 +84,7 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
   const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const [hoverData, setHoverData] = useState<TerrainHoverData | null>(null);
+  const [renderStats, setRenderStats] = useState<WebGLRenderStats | null>(null);
 
   // Initialize Three.js scene viewer
   useEffect(() => {
@@ -92,6 +93,9 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
     const viewer = new TerrainViewer({
       container: containerRef.current,
       initialExaggeration: verticalExaggeration,
+    });
+    viewer.setOnStatsUpdate((stats) => {
+      setRenderStats(stats);
     });
     viewerRef.current = viewer;
     if (viewerRefOut) {
@@ -314,6 +318,7 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
         hoverData={hoverData}
         activeMode={activeMode}
         onSetCameraPreset={onSetCameraPreset}
+        renderStats={renderStats}
       />
 
       {/* Navigation & Controls Hints */}

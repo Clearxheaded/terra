@@ -645,6 +645,85 @@ html, body, #root {
   color: #60a5fa;
 }
 
+.hud-stats-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(11, 15, 23, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.3rem 0.65rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-secondary);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.worker-progress-bar-container {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(11, 15, 23, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--accent-primary);
+  border-radius: 8px;
+  padding: 0.65rem 1.25rem;
+  min-width: 340px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.6);
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  pointer-events: none;
+}
+
+.worker-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.worker-progress-track {
+  width: 100%;
+  height: 6px;
+  background: var(--bg-tertiary);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.worker-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6, #10b981);
+  transition: width 0.15s ease-out;
+}
+
+.hud-fps-badge {
+  font-weight: 700;
+  color: #10b981;
+}
+
+.hud-fps-badge.warning {
+  color: #f59e0b;
+}
+
+.hud-fps-badge.danger {
+  color: #ef4444;
+}
+
+.hud-lod-tag {
+  background: rgba(59, 130, 246, 0.2);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+}
+
 .hud-mode-pill {
   padding: 0.35rem 0.75rem;
   border-radius: 6px;

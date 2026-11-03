@@ -26,6 +26,7 @@ import type { TerrainViewer } from '@/features/terrain/terrain-viewer';
 import { TerrainViewport } from '@/features/terrain/TerrainViewport';
 import { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import { parseGeoTIFF } from '@/lib/geospatial/geotiff-loader';
+import { checkRasterSafety } from '@/lib/geospatial/memory-manager';
 import {
   createSyntheticTerrain,
   type SyntheticTerrainOptions,
@@ -223,8 +224,9 @@ export const App: React.FC = () => {
     try {
       const buffer = await file.arrayBuffer();
       const result = await parseGeoTIFF(buffer, file.name);
+      const safety = checkRasterSafety(result.grid.width, result.grid.height);
       setGrid(result.grid);
-      setWarnings(result.warnings);
+      setWarnings([...result.warnings, ...safety.warnings]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to parse GeoTIFF dataset.';
       setErrorMessage(message);
@@ -248,8 +250,9 @@ export const App: React.FC = () => {
       }
       const buffer = await response.arrayBuffer();
       const result = await parseGeoTIFF(buffer, 'Sample Volcanic Peak (30m UTM)');
+      const safety = checkRasterSafety(result.grid.width, result.grid.height);
       setGrid(result.grid);
-      setWarnings(result.warnings);
+      setWarnings([...result.warnings, ...safety.warnings]);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load sample file.';
       setErrorMessage(message);

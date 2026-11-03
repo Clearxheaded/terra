@@ -49,6 +49,10 @@ export interface TerrainMeshOptions {
   watershedMask?: Uint8Array | null;
   /** Multi-layer blending options */
   blendOptions?: LayerBlendOptions;
+  /** Explicit level-of-detail stride factor (e.g. 2, 3, 4) */
+  lodStride?: number;
+  /** Maximum vertex budget before automatic LOD decimation is engaged (default: 1,000,000) */
+  maxVertices?: number;
 }
 
 export interface TerrainGeometryData {
@@ -62,6 +66,10 @@ export interface TerrainGeometryData {
   stepY: number;
   halfWidth: number;
   halfHeight: number;
+  lodStride: number;
+  meshWidth: number;
+  meshHeight: number;
+  vertexCount: number;
 }
 
 /**
@@ -178,7 +186,8 @@ export function updateTerrainGeometryColors(
   maxLayerVal = 1.0,
   watershedMask?: Uint8Array | null,
   colorRamp: readonly ColorStop[] = TOPOGRAPHIC_RAMP,
-  blendOptions?: LayerBlendOptions
+  blendOptions?: LayerBlendOptions,
+  lodStride = 1
 ): void {
   const colorsAttr = geometry.getAttribute('color') as THREE.BufferAttribute | undefined;
   if (!colorsAttr) return;
@@ -190,11 +199,18 @@ export function updateTerrainGeometryColors(
   const elevationRange = Math.max(stats.max - stats.min, 1);
   const hasWatershed = watershedMask && watershedMask.length === width * height;
 
-  for (let r = 0; r < height; r++) {
+  const stride = Math.max(1, Math.floor(lodStride));
+  const meshWidth = Math.ceil((width - 1) / stride) + 1;
+  const meshHeight = Math.ceil((height - 1) / stride) + 1;
+
+  for (let mr = 0; mr < meshHeight; mr++) {
+    const r = Math.min(mr * stride, height - 1);
     const rowOffset = r * width;
-    for (let c = 0; c < width; c++) {
+    for (let mc = 0; mc < meshWidth; mc++) {
+      const c = Math.min(mc * stride, width - 1);
       const idx = rowOffset + c;
-      const attrOffset3 = idx * 3;
+      const vertIdx = mr * meshWidth + mc;
+      const attrOffset3 = vertIdx * 3;
       const rawVal = grid.data[idx]!;
 
       if (grid.isNoData(rawVal)) {
@@ -243,6 +259,7 @@ export function updateTerrainGeometryColors(
 /**
  * Builds a THREE.BufferGeometry from an ElevationGrid with vertex positions,
  * normals, UV coordinates, and analysis-aware vertex colors.
+ * Supports adaptive level-of-detail (LOD) subsampling to guarantee bounded GPU vertex limits.
  */
 export function buildTerrainGeometry(
   grid: ElevationGrid,
@@ -253,11 +270,25 @@ export function buildTerrainGeometry(
     colorRamp = TOPOGRAPHIC_RAMP,
     layer = 'elevation',
     layerData = null,
+    lodStride,
+    maxVertices = 1_000_000,
   } = options;
 
   const width = grid.width;
   const height = grid.height;
+  const totalCells = width * height;
   const stats = grid.getStats();
+
+  // Determine stride: explicit lodStride, or computed based on maxVertices budget
+  const stride = Math.max(
+    1,
+    lodStride ?? (totalCells > maxVertices ? Math.ceil(Math.sqrt(totalCells / maxVertices)) : 1)
+  );
+
+  // Mesh resolution after decimation
+  const meshWidth = Math.ceil((width - 1) / stride) + 1;
+  const meshHeight = Math.ceil((height - 1) / stride) + 1;
+  const vertexCount = meshWidth * meshHeight;
 
   // Unit conversion factor if coordinates are in degrees
   let unitToMeters = 1.0;
@@ -278,7 +309,6 @@ export function buildTerrainGeometry(
   const elevationScale = horizontalScale;
 
   const elevationRange = Math.max(stats.max - stats.min, 1);
-  const vertexCount = width * height;
 
   const positions = new Float32Array(vertexCount * 3);
   const colors = new Float32Array(vertexCount * 3);
@@ -289,18 +319,20 @@ export function buildTerrainGeometry(
   const stepX = realPixelWidth * horizontalScale;
   const stepY = realPixelHeight * horizontalScale;
 
-  // Fill vertex attributes
-  for (let r = 0; r < height; r++) {
-    // r=0 is North (-Z), r=height-1 is South (+Z)
+  // Fill vertex attributes across downsampled mesh grid
+  for (let mr = 0; mr < meshHeight; mr++) {
+    const r = Math.min(mr * stride, height - 1);
     const z = (r - halfHeight) * stepY;
     const rowOffset = r * width;
 
-    for (let c = 0; c < width; c++) {
-      // c=0 is West (-X), c=width-1 is East (+X)
+    for (let mc = 0; mc < meshWidth; mc++) {
+      const c = Math.min(mc * stride, width - 1);
       const x = (c - halfWidth) * stepX;
+
+      const vertIdx = mr * meshWidth + mc;
+      const attrOffset3 = vertIdx * 3;
+      const attrOffset2 = vertIdx * 2;
       const idx = rowOffset + c;
-      const attrOffset3 = idx * 3;
-      const attrOffset2 = idx * 2;
 
       const rawVal = grid.data[idx]!;
       const isVoid = grid.isNoData(rawVal);
@@ -324,7 +356,7 @@ export function buildTerrainGeometry(
           options.maxLayerVal,
           options.blendOptions
         );
-        if (options.watershedMask && options.watershedMask.length === vertexCount) {
+        if (options.watershedMask && options.watershedMask.length === totalCells) {
           if (options.watershedMask[idx] === 1) {
             rgb = [
               rgb[0] * 0.4 + 1.0 * 0.6,
@@ -350,17 +382,17 @@ export function buildTerrainGeometry(
     }
   }
 
-  // Generate triangle quad indices
-  const quadCount = (width - 1) * (height - 1);
+  // Generate triangle quad indices over decimated mesh grid
+  const quadCount = (meshWidth - 1) * (meshHeight - 1);
   const indexCount = quadCount * 6;
   const indices = vertexCount > 65535 ? new Uint32Array(indexCount) : new Uint16Array(indexCount);
 
   let ptr = 0;
-  for (let r = 0; r < height - 1; r++) {
-    for (let c = 0; c < width - 1; c++) {
-      const tl = r * width + c;
+  for (let mr = 0; mr < meshHeight - 1; mr++) {
+    for (let mc = 0; mc < meshWidth - 1; mc++) {
+      const tl = mr * meshWidth + mc;
       const tr = tl + 1;
-      const bl = (r + 1) * width + c;
+      const bl = (mr + 1) * meshWidth + mc;
       const br = bl + 1;
 
       // Triangle 1: TL -> BL -> TR (upward normal +Y)
@@ -393,6 +425,10 @@ export function buildTerrainGeometry(
     stepY,
     halfWidth,
     halfHeight,
+    lodStride: stride,
+    meshWidth,
+    meshHeight,
+    vertexCount,
   };
 }
 

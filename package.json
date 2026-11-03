@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "bench": "vitest run tests/benchmarks.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

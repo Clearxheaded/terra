@@ -1,4 +1,5 @@
 import React from 'react';
+import type { WebGLRenderStats } from '@/features/terrain/terrain-viewer';
 
 export interface TerrainHoverData {
   col: number;
@@ -19,12 +20,14 @@ interface TerrainHUDProps {
   hoverData: TerrainHoverData | null;
   activeMode?: 'inspect' | 'transect-a' | 'transect-b';
   onSetCameraPreset?: (preset: 'top-down' | 'isometric' | 'oblique' | 'default') => void;
+  renderStats?: WebGLRenderStats | null;
 }
 
 export const TerrainHUD: React.FC<TerrainHUDProps> = ({
   hoverData,
   activeMode,
   onSetCameraPreset,
+  renderStats,
 }) => {
   return (
     <div className="terrain-hud-container">
@@ -64,6 +67,25 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
           >
             🔄 Reset
           </button>
+        </div>
+      )}
+
+      {/* Real-time WebGL Performance Stats Pill */}
+      {renderStats && (
+        <div className="hud-stats-pill">
+          <span
+            className={`hud-fps-badge ${
+              renderStats.fps >= 50 ? '' : renderStats.fps >= 30 ? 'warning' : 'danger'
+            }`}
+          >
+            ⚡ {renderStats.fps} FPS
+          </span>
+          <span>{renderStats.frameTimeMs} ms</span>
+          <span>🔺 {renderStats.triangles.toLocaleString()} tris</span>
+          <span>📦 {renderStats.drawCalls} draws</span>
+          {renderStats.lodStride > 1 && (
+            <span className="hud-lod-tag">LOD {renderStats.lodStride}x</span>
+          )}
         </div>
       )}
 
