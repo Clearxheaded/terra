@@ -488,6 +488,81 @@ html, body, #root {
   background: linear-gradient(to right, #000 0%, #808080 50%, #fff 100%);
 }
 
+.legend-bar-d8-flow {
+  background: linear-gradient(
+    to right,
+    #00d9e6 0%,
+    #2673f2 14.3%,
+    #8c33e6 28.6%,
+    #d926b3 42.8%,
+    #f24d26 57.1%,
+    #f2b31a 71.4%,
+    #33d94d 85.7%,
+    #1ad9a6 100%
+  );
+}
+
+.legend-bar-flow-accumulation {
+  background: linear-gradient(
+    to right,
+    #141a38 0%,
+    #1e4099 25%,
+    #1980d9 50%,
+    #26d9f2 75%,
+    #f2faff 100%
+  );
+}
+
+/* Inspection Card */
+.inspection-card {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 8px;
+  padding: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.inspection-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--accent-primary);
+  letter-spacing: 0.05em;
+}
+
+.inspection-table {
+  width: 100%;
+  font-size: 0.78rem;
+  border-collapse: collapse;
+}
+
+.inspection-table td {
+  padding: 0.25rem 0;
+}
+
+.inspection-table td:first-child {
+  color: var(--text-muted);
+}
+
+.inspection-table td:last-child {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.4rem 0;
+  font-size: 0.82rem;
+}
+
 .legend-labels {
   display: flex;
   justify-content: space-between;

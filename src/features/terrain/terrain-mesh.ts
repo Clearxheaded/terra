@@ -5,6 +5,13 @@ import {
   evaluateHillshadeColor,
   evaluateSlopeColor,
 } from '@/features/analysis/color-ramps';
+import {
+  evaluateD8FlowColor,
+  evaluateFlowAccumulationColor,
+  getDownstreamIndex,
+  type D8Direction,
+  type FlowPathPoint,
+} from '@/features/hydrology';
 import { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import { evaluateColorRamp, TOPOGRAPHIC_RAMP, type ColorStop } from './color-ramps';
 
@@ -19,6 +26,10 @@ export interface TerrainMeshOptions {
   layer?: AnalysisLayerType;
   /** Pre-calculated data array for active analysis layer */
   layerData?: Float32Array | null;
+  /** Maximum value for scaling (e.g. maxLogAccum for flow accumulation) */
+  maxLayerVal?: number;
+  /** Binary mask (1 = in watershed, 0 = outside) for watershed highlight */
+  watershedMask?: Uint8Array | null;
 }
 
 export interface TerrainGeometryData {
@@ -28,6 +39,10 @@ export interface TerrainGeometryData {
   baseElevation: number;
   minElevation: number;
   maxElevation: number;
+  stepX: number;
+  stepY: number;
+  halfWidth: number;
+  halfHeight: number;
 }
 
 /**
@@ -40,7 +55,8 @@ function getVertexRgb(
   statsMin: number,
   elevationRange: number,
   colorRamp: readonly ColorStop[],
-  layerData?: Float32Array | null
+  layerData?: Float32Array | null,
+  maxLayerVal = 1.0
 ): [r: number, g: number, b: number] {
   if (layer === 'elevation') {
     const normalizedElev = (rawVal - statsMin) / elevationRange;
@@ -58,6 +74,14 @@ function getVertexRgb(
     const val = layerData ? layerData[idx]! : 180;
     return evaluateHillshadeColor(val);
   }
+  if (layer === 'd8-flow') {
+    const val = layerData ? layerData[idx]! : 0;
+    return evaluateD8FlowColor(val);
+  }
+  if (layer === 'flow-accumulation') {
+    const logVal = layerData ? layerData[idx]! : 0;
+    return evaluateFlowAccumulationColor(logVal, maxLayerVal);
+  }
   return [0.5, 0.5, 0.5];
 }
 
@@ -69,6 +93,8 @@ export function updateTerrainGeometryColors(
   grid: ElevationGrid,
   layer: AnalysisLayerType = 'elevation',
   layerData?: Float32Array | null,
+  maxLayerVal = 1.0,
+  watershedMask?: Uint8Array | null,
   colorRamp: readonly ColorStop[] = TOPOGRAPHIC_RAMP
 ): void {
   const colorsAttr = geometry.getAttribute('color') as THREE.BufferAttribute | undefined;
@@ -79,6 +105,7 @@ export function updateTerrainGeometryColors(
   const height = grid.height;
   const stats = grid.getStats();
   const elevationRange = Math.max(stats.max - stats.min, 1);
+  const hasWatershed = watershedMask && watershedMask.length === width * height;
 
   for (let r = 0; r < height; r++) {
     const rowOffset = r * width;
@@ -94,7 +121,32 @@ export function updateTerrainGeometryColors(
         continue;
       }
 
-      const rgb = getVertexRgb(layer, rawVal, idx, stats.min, elevationRange, colorRamp, layerData);
+      let rgb = getVertexRgb(
+        layer,
+        rawVal,
+        idx,
+        stats.min,
+        elevationRange,
+        colorRamp,
+        layerData,
+        maxLayerVal
+      );
+
+      // Apply watershed highlighting if active
+      if (hasWatershed) {
+        if (watershedMask[idx] === 1) {
+          // Warm gold/amber highlight for cells in watershed
+          rgb = [
+            rgb[0] * 0.4 + 1.0 * 0.6,
+            rgb[1] * 0.4 + 0.76 * 0.6,
+            rgb[2] * 0.4 + 0.18 * 0.6,
+          ];
+        } else {
+          // Dim terrain outside watershed
+          rgb = [rgb[0] * 0.32, rgb[1] * 0.32, rgb[2] * 0.32];
+        }
+      }
+
       colors[attrOffset3] = rgb[0];
       colors[attrOffset3 + 1] = rgb[1];
       colors[attrOffset3 + 2] = rgb[2];
@@ -177,7 +229,27 @@ export function buildTerrainGeometry(
         rgb = [0.12, 0.14, 0.17]; // Dim slate for void / NoData
       } else {
         y = (rawVal - stats.min) * elevationScale;
-        rgb = getVertexRgb(layer, rawVal, idx, stats.min, elevationRange, colorRamp, layerData);
+        rgb = getVertexRgb(
+          layer,
+          rawVal,
+          idx,
+          stats.min,
+          elevationRange,
+          colorRamp,
+          layerData,
+          options.maxLayerVal
+        );
+        if (options.watershedMask && options.watershedMask.length === vertexCount) {
+          if (options.watershedMask[idx] === 1) {
+            rgb = [
+              rgb[0] * 0.4 + 1.0 * 0.6,
+              rgb[1] * 0.4 + 0.76 * 0.6,
+              rgb[2] * 0.4 + 0.18 * 0.6,
+            ];
+          } else {
+            rgb = [rgb[0] * 0.32, rgb[1] * 0.32, rgb[2] * 0.32];
+          }
+        }
       }
 
       positions[attrOffset3] = x;
@@ -232,6 +304,131 @@ export function buildTerrainGeometry(
     baseElevation: stats.min,
     minElevation: stats.min,
     maxElevation: stats.max,
+    stepX,
+    stepY,
+    halfWidth,
+    halfHeight,
+  };
+}
+
+/**
+ * Builds a THREE.BufferGeometry representing the 3D stream network polyline segments
+ * draped over the terrain surface.
+ */
+export function buildStreamLinesGeometry(
+  grid: ElevationGrid,
+  flowDir: Uint8Array,
+  flowAccum: Float32Array,
+  threshold: number,
+  geomData: TerrainGeometryData,
+  yOffset = 0.35
+): THREE.BufferGeometry | null {
+  const { width, height } = grid;
+  const { stepX, stepY, halfWidth, halfHeight, elevationScale, minElevation } = geomData;
+
+  const segments: number[] = [];
+
+  for (let r = 0; r < height; r++) {
+    const rowOffset = r * width;
+    for (let c = 0; c < width; c++) {
+      const idx = rowOffset + c;
+      const acc = flowAccum[idx];
+      if (acc === undefined || Number.isNaN(acc) || acc < threshold) continue;
+
+      const dir = flowDir[idx] as D8Direction;
+      if (dir === 0) continue;
+
+      const targetIdx = getDownstreamIndex(c, r, dir, width, height);
+      if (targetIdx < 0) continue;
+
+      const targetAcc = flowAccum[targetIdx];
+      if (targetAcc === undefined || Number.isNaN(targetAcc) || targetAcc < threshold) continue;
+
+      const tc = targetIdx % width;
+      const tr = Math.floor(targetIdx / width);
+
+      const x1 = (c - halfWidth) * stepX;
+      const z1 = (r - halfHeight) * stepY;
+      const y1 = (grid.data[idx]! - minElevation) * elevationScale + yOffset;
+
+      const x2 = (tc - halfWidth) * stepX;
+      const z2 = (tr - halfHeight) * stepY;
+      const y2 = (grid.data[targetIdx]! - minElevation) * elevationScale + yOffset;
+
+      segments.push(x1, y1, z1, x2, y2, z2);
+    }
+  }
+
+  if (segments.length === 0) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(segments, 3));
+  return geometry;
+}
+
+/**
+ * Builds a THREE.BufferGeometry representing a traced downstream flow path.
+ */
+export function buildFlowPathGeometry(
+  _grid: ElevationGrid,
+  path: readonly FlowPathPoint[],
+  geomData: TerrainGeometryData,
+  yOffset = 0.6
+): THREE.BufferGeometry | null {
+  if (path.length < 2) return null;
+
+  const { stepX, stepY, halfWidth, halfHeight, elevationScale, minElevation } = geomData;
+  const positions = new Float32Array(path.length * 3);
+
+  for (let i = 0; i < path.length; i++) {
+    const pt = path[i]!;
+    const x = (pt.col - halfWidth) * stepX;
+    const z = (pt.row - halfHeight) * stepY;
+    const y = (pt.elevation - minElevation) * elevationScale + yOffset;
+
+    positions[i * 3] = x;
+    positions[i * 3 + 1] = y;
+    positions[i * 3 + 2] = z;
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  return geometry;
+}
+
+/**
+ * Converts raster (col, row) coordinates to local 3D mesh space.
+ */
+export function gridCoordToWorld(
+  col: number,
+  row: number,
+  elevation: number,
+  geomData: TerrainGeometryData,
+  yOffset = 0.5
+): [x: number, y: number, z: number] {
+  const { stepX, stepY, halfWidth, halfHeight, elevationScale, minElevation } = geomData;
+  const x = (col - halfWidth) * stepX;
+  const z = (row - halfHeight) * stepY;
+  const y = (elevation - minElevation) * elevationScale + yOffset;
+  return [x, y, z];
+}
+
+/**
+ * Converts local 3D mesh coordinates (x, z) to raster (col, row).
+ */
+export function worldToGridCoord(
+  x: number,
+  z: number,
+  grid: ElevationGrid,
+  geomData: TerrainGeometryData
+): { col: number; row: number } {
+  const { stepX, stepY, halfWidth, halfHeight } = geomData;
+  const col = Math.round(x / stepX + halfWidth);
+  const row = Math.round(z / stepY + halfHeight);
+
+  return {
+    col: Math.max(0, Math.min(grid.width - 1, col)),
+    row: Math.max(0, Math.min(grid.height - 1, row)),
   };
 }
 

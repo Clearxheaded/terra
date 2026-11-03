@@ -1,11 +1,16 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { AnalysisLayerType } from '@/features/analysis/types';
+import type { FlowPathPoint } from '@/features/hydrology/types';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import {
+  buildFlowPathGeometry,
+  buildStreamLinesGeometry,
   buildTerrainGeometry,
   createTerrainMesh,
+  gridCoordToWorld,
   updateTerrainGeometryColors,
+  type TerrainGeometryData,
 } from './terrain-mesh';
 
 export interface TerrainViewerOptions {
@@ -27,6 +32,13 @@ export class TerrainViewer {
 
   private currentMesh: THREE.Mesh | null = null;
   private currentGeometry: THREE.BufferGeometry | null = null;
+  private currentGeomData: TerrainGeometryData | null = null;
+
+  // Hydrology 3D vector overlays
+  private streamMesh: THREE.LineSegments | null = null;
+  private flowPathMesh: THREE.Line | null = null;
+  private pourPointMesh: THREE.Mesh | null = null;
+
   private animationFrameId: number | null = null;
   private isDisposed = false;
 
@@ -123,19 +135,24 @@ export class TerrainViewer {
   loadGrid(
     grid: ElevationGrid,
     layer: AnalysisLayerType = 'elevation',
-    layerData?: Float32Array | null
+    layerData?: Float32Array | null,
+    maxLayerVal = 1.0,
+    watershedMask?: Uint8Array | null
   ): void {
     this.clearCurrentMesh();
 
-    const { geometry } = buildTerrainGeometry(grid, {
+    const geomData = buildTerrainGeometry(grid, {
       worldSize: 100,
       wireframe: this.wireframe,
       layer,
       layerData,
+      maxLayerVal,
+      watershedMask,
     });
 
-    this.currentGeometry = geometry;
-    this.currentMesh = createTerrainMesh(geometry, { wireframe: this.wireframe });
+    this.currentGeomData = geomData;
+    this.currentGeometry = geomData.geometry;
+    this.currentMesh = createTerrainMesh(geomData.geometry, { wireframe: this.wireframe });
     this.currentMesh.scale.set(1, this.verticalExaggeration, 1);
 
     this.scene.add(this.currentMesh);
@@ -148,10 +165,174 @@ export class TerrainViewer {
   updateLayerColors(
     grid: ElevationGrid,
     layer: AnalysisLayerType,
-    layerData?: Float32Array | null
+    layerData?: Float32Array | null,
+    maxLayerVal = 1.0,
+    watershedMask?: Uint8Array | null
   ): void {
     if (!this.currentGeometry) return;
-    updateTerrainGeometryColors(this.currentGeometry, grid, layer, layerData);
+    updateTerrainGeometryColors(
+      this.currentGeometry,
+      grid,
+      layer,
+      layerData,
+      maxLayerVal,
+      watershedMask
+    );
+  }
+
+  /**
+   * Updates the 3D stream network polyline overlay.
+   */
+  updateStreamNetwork(
+    grid: ElevationGrid | null,
+    flowDir: Uint8Array | null,
+    flowAccum: Float32Array | null,
+    threshold: number,
+    visible: boolean
+  ): void {
+    if (this.streamMesh) {
+      if (this.currentMesh) {
+        this.currentMesh.remove(this.streamMesh);
+      }
+      this.streamMesh.geometry.dispose();
+      (this.streamMesh.material as THREE.Material).dispose();
+      this.streamMesh = null;
+    }
+
+    if (!visible || !grid || !flowDir || !flowAccum || !this.currentGeomData || !this.currentMesh) {
+      return;
+    }
+
+    const geom = buildStreamLinesGeometry(
+      grid,
+      flowDir,
+      flowAccum,
+      threshold,
+      this.currentGeomData
+    );
+    if (!geom) return;
+
+    const material = new THREE.LineBasicMaterial({
+      color: 0x00ffff,
+      transparent: true,
+      opacity: 0.95,
+      depthTest: true,
+    });
+
+    this.streamMesh = new THREE.LineSegments(geom, material);
+    this.currentMesh.add(this.streamMesh);
+  }
+
+  /**
+   * Updates the traced downstream flow path polyline.
+   */
+  updateFlowPath(grid: ElevationGrid | null, path: readonly FlowPathPoint[] | null): void {
+    if (this.flowPathMesh) {
+      if (this.currentMesh) {
+        this.currentMesh.remove(this.flowPathMesh);
+      }
+      this.flowPathMesh.geometry.dispose();
+      (this.flowPathMesh.material as THREE.Material).dispose();
+      this.flowPathMesh = null;
+    }
+
+    if (!grid || !path || path.length < 2 || !this.currentGeomData || !this.currentMesh) {
+      return;
+    }
+
+    const geom = buildFlowPathGeometry(grid, path, this.currentGeomData);
+    if (!geom) return;
+
+    const material = new THREE.LineBasicMaterial({
+      color: 0xffb703,
+      linewidth: 3,
+      depthTest: true,
+    });
+
+    this.flowPathMesh = new THREE.Line(geom, material);
+    this.currentMesh.add(this.flowPathMesh);
+  }
+
+  /**
+   * Updates the 3D pour point indicator marker.
+   */
+  updatePourPoint(
+    grid: ElevationGrid | null,
+    pourPoint: { col: number; row: number } | null
+  ): void {
+    if (this.pourPointMesh) {
+      if (this.currentMesh) {
+        this.currentMesh.remove(this.pourPointMesh);
+      }
+      this.pourPointMesh.geometry.dispose();
+      (this.pourPointMesh.material as THREE.Material).dispose();
+      this.pourPointMesh = null;
+    }
+
+    if (!grid || !pourPoint || !this.currentGeomData || !this.currentMesh) {
+      return;
+    }
+
+    const idx = pourPoint.row * grid.width + pourPoint.col;
+    const elev = grid.data[idx];
+    if (elev === undefined || grid.isNoData(elev)) return;
+
+    const [x, y, z] = gridCoordToWorld(
+      pourPoint.col,
+      pourPoint.row,
+      elev,
+      this.currentGeomData,
+      1.0
+    );
+
+    const sphereGeom = new THREE.SphereGeometry(1.2, 16, 16);
+    const sphereMat = new THREE.MeshStandardMaterial({
+      color: 0xff3b30,
+      emissive: 0xff3b30,
+      emissiveIntensity: 0.6,
+      roughness: 0.2,
+    });
+
+    this.pourPointMesh = new THREE.Mesh(sphereGeom, sphereMat);
+    this.pourPointMesh.position.set(x, y, z);
+    this.currentMesh.add(this.pourPointMesh);
+  }
+
+  /**
+   * Raycasts the 3D terrain mesh from screen coordinates to identify the clicked raster cell.
+   */
+  raycastTerrain(
+    clientX: number,
+    clientY: number,
+    grid: ElevationGrid
+  ): { col: number; row: number; elevation: number } | null {
+    if (!this.currentMesh) return null;
+
+    const rect = this.container.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return null;
+
+    const mouse = new THREE.Vector2();
+    mouse.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, this.camera);
+
+    const intersects = raycaster.intersectObject(this.currentMesh, false);
+    if (intersects.length === 0) return null;
+
+    const hit = intersects[0]!;
+    if (!hit.uv) return null;
+
+    const col = Math.round(hit.uv.x * (grid.width - 1));
+    const row = Math.round((1 - hit.uv.y) * (grid.height - 1));
+
+    const clampedCol = Math.max(0, Math.min(grid.width - 1, col));
+    const clampedRow = Math.max(0, Math.min(grid.height - 1, row));
+    const idx = clampedRow * grid.width + clampedCol;
+    const elevation = grid.data[idx]!;
+
+    return { col: clampedCol, row: clampedRow, elevation };
   }
 
   /**
@@ -184,6 +365,21 @@ export class TerrainViewer {
   }
 
   private clearCurrentMesh(): void {
+    if (this.streamMesh) {
+      this.streamMesh.geometry.dispose();
+      (this.streamMesh.material as THREE.Material).dispose();
+      this.streamMesh = null;
+    }
+    if (this.flowPathMesh) {
+      this.flowPathMesh.geometry.dispose();
+      (this.flowPathMesh.material as THREE.Material).dispose();
+      this.flowPathMesh = null;
+    }
+    if (this.pourPointMesh) {
+      this.pourPointMesh.geometry.dispose();
+      (this.pourPointMesh.material as THREE.Material).dispose();
+      this.pourPointMesh = null;
+    }
     if (this.currentMesh) {
       this.scene.remove(this.currentMesh);
       if (this.currentMesh.material instanceof THREE.Material) {
@@ -195,6 +391,7 @@ export class TerrainViewer {
       this.currentGeometry.dispose();
       this.currentGeometry = null;
     }
+    this.currentGeomData = null;
   }
 
   private handleResize(): void {

@@ -6,9 +6,16 @@ import type {
   SlopeResult,
   SlopeUnit,
 } from '@/features/analysis/types';
+import type {
+  FlowAccumulationResult,
+  FlowDirectionResult,
+  FlowPathPoint,
+  WatershedResult,
+} from '@/features/hydrology/types';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import type { SyntheticTerrainOptions } from '@/lib/geospatial/synthetic-terrain';
 import { AnalysisPanel } from './AnalysisPanel';
+import { HydrologyPanel } from './HydrologyPanel';
 
 interface SidebarProps {
   grid: ElevationGrid | null;
@@ -28,6 +35,18 @@ interface SidebarProps {
   onVerticalExaggerationChange: (val: number) => void;
   wireframe: boolean;
   onWireframeChange: (val: boolean) => void;
+  // Hydrology props
+  isConditioned: boolean;
+  onToggleConditioned: (conditioned: boolean) => void;
+  flowDirResult: FlowDirectionResult | null;
+  flowAccumResult: FlowAccumulationResult | null;
+  streamThreshold: number;
+  onStreamThresholdChange: (threshold: number) => void;
+  showStreamNetwork: boolean;
+  onToggleStreamNetwork: (show: boolean) => void;
+  activeWatershed: WatershedResult | null;
+  tracedFlowPath: readonly FlowPathPoint[] | null;
+  onClearInspection: () => void;
   onFileUpload: (file: File) => void;
   onLoadSynthetic: (type: SyntheticTerrainOptions['type']) => void;
   onLoadSampleFile: () => void;
@@ -53,6 +72,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onVerticalExaggerationChange,
   wireframe,
   onWireframeChange,
+  isConditioned,
+  onToggleConditioned,
+  flowDirResult,
+  flowAccumResult,
+  streamThreshold,
+  onStreamThresholdChange,
+  showStreamNetwork,
+  onToggleStreamNetwork,
+  activeWatershed,
+  tracedFlowPath,
+  onClearInspection,
   onFileUpload,
   onLoadSynthetic,
   onLoadSampleFile,
@@ -138,12 +168,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
         slopeResult={slopeResult}
         aspectResult={aspectResult}
         hillshadeResult={hillshadeResult}
+        flowAccumMax={flowAccumResult?.max}
         slopeUnit={slopeUnit}
         onSlopeUnitChange={onSlopeUnitChange}
         sunAzimuth={sunAzimuth}
         onSunAzimuthChange={onSunAzimuthChange}
         sunAltitude={sunAltitude}
         onSunAltitudeChange={onSunAltitudeChange}
+      />
+
+      {/* Hydrology Workspace Controls */}
+      <HydrologyPanel
+        isConditioned={isConditioned}
+        onToggleConditioned={onToggleConditioned}
+        flowDirResult={flowDirResult}
+        flowAccumResult={flowAccumResult}
+        streamThreshold={streamThreshold}
+        onStreamThresholdChange={onStreamThresholdChange}
+        showStreamNetwork={showStreamNetwork}
+        onToggleStreamNetwork={onToggleStreamNetwork}
+        activeWatershed={activeWatershed}
+        tracedFlowPath={tracedFlowPath}
+        onClearInspection={onClearInspection}
       />
 
       {/* 3D Visualization Controls */}

@@ -16,6 +16,7 @@ interface AnalysisPanelProps {
   slopeResult: SlopeResult | null;
   aspectResult: AspectResult | null;
   hillshadeResult: HillshadeResult | null;
+  flowAccumMax?: number;
   slopeUnit: SlopeUnit;
   onSlopeUnitChange: (unit: SlopeUnit) => void;
   sunAzimuth: number;
@@ -31,6 +32,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   slopeResult,
   aspectResult,
   hillshadeResult,
+  flowAccumMax,
   slopeUnit,
   onSlopeUnitChange,
   sunAzimuth,
@@ -47,7 +49,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       <h2 className="section-title">Terrain Analysis</h2>
 
       {/* Layer selector tabs */}
-      <div className="layer-tabs">
+      <div className="layer-tabs" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
         <button
           type="button"
           className={`layer-tab ${activeLayer === 'elevation' ? 'active' : ''}`}
@@ -80,17 +82,35 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           <span>☀️</span>
           <span>Hillshade</span>
         </button>
+        <button
+          type="button"
+          className={`layer-tab ${activeLayer === 'd8-flow' ? 'active' : ''}`}
+          onClick={() => onLayerChange('d8-flow')}
+        >
+          <span>💧</span>
+          <span>D8 Flow</span>
+        </button>
+        <button
+          type="button"
+          className={`layer-tab ${activeLayer === 'flow-accumulation' ? 'active' : ''}`}
+          onClick={() => onLayerChange('flow-accumulation')}
+        >
+          <span>🌊</span>
+          <span>Accum</span>
+        </button>
       </div>
 
       {/* Interactive Legend */}
       <div className="legend-card">
         <div className="legend-header">
-          <span>{activeLayer.toUpperCase()} COLOR RAMP</span>
+          <span>{activeLayer.replace('-', ' ').toUpperCase()} COLOR RAMP</span>
           {activeLayer === 'slope' && (
             <span className="badge">{slopeUnit === 'degrees' ? '0° – 60°+' : '0% – 173%+'}</span>
           )}
           {activeLayer === 'aspect' && <span className="badge">Cyclic 360°</span>}
           {activeLayer === 'hillshade' && <span className="badge">0 – 255 Grayscale</span>}
+          {activeLayer === 'd8-flow' && <span className="badge">8 Compass Directions</span>}
+          {activeLayer === 'flow-accumulation' && <span className="badge">Log10 River Gradient</span>}
         </div>
 
         <div className={`legend-bar legend-bar-${activeLayer}`} />
@@ -127,6 +147,23 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               <span>Shadow (0)</span>
               <span>Midtone (128)</span>
               <span>Direct (255)</span>
+            </>
+          )}
+
+          {activeLayer === 'd8-flow' && (
+            <>
+              <span>E (1)</span>
+              <span>S (4)</span>
+              <span>W (16)</span>
+              <span>N (64)</span>
+            </>
+          )}
+
+          {activeLayer === 'flow-accumulation' && (
+            <>
+              <span>1 cell (Ridge)</span>
+              <span>Intermediate</span>
+              <span>{flowAccumMax ? `${flowAccumMax.toLocaleString()} cells` : 'River Trunk'}</span>
             </>
           )}
         </div>

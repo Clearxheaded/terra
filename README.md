@@ -54,9 +54,35 @@ Terra is an open-source, browser-based geospatial analysis and 3D terrain visual
   - Hillshade grayscale illumination ramp ($0$ shadow $\to$ $255$ highlight).
   - In-place vertex color buffer updates (`needsUpdate = true`) switching layers at 60 FPS without reallocating geometry.
 - **UI Analysis Workspace & Legends**:
-  - Analysis layer selector (Elevation, Slope, Aspect, Hillshade).
+  - Analysis layer selector (Elevation, Slope, Aspect, Hillshade, D8 Flow, Flow Accumulation).
   - Interactive gradient legend cards with range labels.
   - Live statistical summaries (Mean Slope, Max Slope, Dominant Facing %, Circular Mean, Mean Shading).
+
+### Milestone 3 — Hydrology
+- **DEM Depression Preprocessing (Barnes Priority-Flood)**:
+  - Optimal $O(N \log N)$ sink filling using a cache-friendly typed-array binary min-heap.
+  - Raises enclosed interior pits to their lowest natural spillover sill elevation while preserving true downhill drainage slopes.
+  - Supports optional infinitesimal downward $\epsilon$-gradient ($10^{-5}\text{ m}$) for complete flat resolution.
+  - Toggle between raw unconditioned DEM routing and hydrologically conditioned surface routing.
+- **D8 Flow Direction Algorithm**:
+  - Computes steepest downward descent among 8 neighbors according to O'Callaghan & Mark (1984).
+  - True metric distance weighting: cardinal distances $dx, dy$ and diagonal distances $\sqrt{dx^2 + dy^2}$, eliminating grid diagonal bias.
+  - Standard D8 bit-coding: 1 (E), 2 (SE), 4 (S), 8 (SW), 16 (W), 32 (NW), 64 (N), 128 (NE), and 0 (pits, flats, outlets, NoData).
+  - Deterministic tie-breaking policy (clockwise order starting from East).
+  - Robust boundary and NoData guardrails preventing invalid edge routing.
+- **Topological Flow Accumulation**:
+  - In-degree dependency ordering guarantees $O(N)$ execution and absolute cycle freedom (zero infinite loops).
+  - Supports linear and log10-scaled accumulation ($\log_{10}(\text{cells})$) for high dynamic range hypsometric river visualization.
+  - Reports maximum contributing cells, mean accumulation, and peak drainage coordinate.
+- **Stream Extraction & 3D Vector Drape**:
+  - Channel initiation thresholding extracting dendritic stream networks.
+  - Draped 3D vector polyline overlays rendered in Three.js floating slightly above terrain geometry to prevent z-fighting.
+- **Interactive Pour Point Inspection & Watershed Delineation**:
+  - Raycasts the 3D terrain surface on click to locate exact raster $(col, row)$ coordinates and elevation.
+  - Delineates the entire upstream contributing watershed via reverse-flow breadth-first search.
+  - Dynamically highlights the contributing basin on the 3D terrain while dimming unselected landscape.
+  - Computes contributing drainage area in $\text{km}^2$, total cell count, and basin percentage.
+  - Traces the complete downstream flow path polyline from the selected point to the ocean/basin outlet.
 
 ---
 
@@ -64,8 +90,8 @@ Terra is an open-source, browser-based geospatial analysis and 3D terrain visual
 
 - **Framework**: React 19, TypeScript (strict mode enabled with zero implicit any)
 - **Bundler & Tooling**: Vite 6, ESLint, TypeScript-ESLint
-- **Graphics**: Three.js (`WebGLRenderer`, `BufferGeometry`, `MeshStandardMaterial`, `OrbitControls`)
-- **Geospatial Processing**: `geotiff.js`, TypedArrays (`Float32Array`)
+- **Graphics**: Three.js (`WebGLRenderer`, `BufferGeometry`, `MeshStandardMaterial`, `OrbitControls`, `LineSegments`, `Line`)
+- **Geospatial Processing**: `geotiff.js`, TypedArrays (`Float32Array`, `Uint8Array`, `Int32Array`)
 - **Testing**: Vitest with deterministic unit test suites
 
 ---
@@ -112,16 +138,15 @@ npm run build
 ## Current Limitations
 
 - **Coordinate Reprojection**: Geographic rasters (WGS 84 in degrees) use an approximate latitudinal metric factor ($111,320\text{ m/deg}$). Full coordinate reprojection (e.g. via Proj4) is planned for future milestones.
-- **Raster Processing Concurrency**: Large rasters are processed synchronously; Web Worker offloading is scheduled for Milestone 5.
-- **Hydrological Depression Preprocessing**: Sink filling and hydrological routing are scheduled for Milestone 3.
+- **Raster Processing Concurrency**: Large rasters are processed synchronously on the main thread; Web Worker offloading is scheduled for Milestone 5.
+- **Multi-Flow Direction (MD8/D-Infinity)**: Currently implements deterministic single-flow D8 routing; dispersive flow algorithms are planned as advanced options.
 
 ---
 
 ## Next Milestone
 
-- **Milestone 3 — Hydrology**:
-  - D8 flow direction calculation.
-  - Depression and flat handling (sink filling / carving).
-  - Flow accumulation raster.
-  - Stream network and drainage path extraction.
-  - Contributing watershed delineation from arbitrary pour points.
+- **Milestone 4 — Analysis Workspace**:
+  - Multi-layer blending and opacity controls.
+  - Cross-section elevation profiling along user-drawn transects.
+  - Geographic coordinate readout and datum inspector.
+  - Export capabilities (GeoTIFF, GeoJSON stream vectors, PNG renders).

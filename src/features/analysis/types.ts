@@ -4,7 +4,13 @@
 
 export type SlopeUnit = 'degrees' | 'percent';
 
-export type AnalysisLayerType = 'elevation' | 'slope' | 'aspect' | 'hillshade';
+export type AnalysisLayerType =
+  | 'elevation'
+  | 'slope'
+  | 'aspect'
+  | 'hillshade'
+  | 'd8-flow'
+  | 'flow-accumulation';
 
 export interface SlopeResult {
   readonly data: Float32Array;
