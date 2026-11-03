@@ -1,15 +1,18 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { ProfilePoint } from '@/features/analysis/profile';
 import type { AnalysisLayerType } from '@/features/analysis/types';
 import type { FlowPathPoint } from '@/features/hydrology/types';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import {
   buildFlowPathGeometry,
+  buildProfileTransectGeometry,
   buildStreamLinesGeometry,
   buildTerrainGeometry,
   createTerrainMesh,
   gridCoordToWorld,
   updateTerrainGeometryColors,
+  type LayerBlendOptions,
   type TerrainGeometryData,
 } from './terrain-mesh';
 
@@ -38,6 +41,12 @@ export class TerrainViewer {
   private streamMesh: THREE.LineSegments | null = null;
   private flowPathMesh: THREE.Line | null = null;
   private pourPointMesh: THREE.Mesh | null = null;
+
+  // Elevation Profile 3D vector overlays
+  private transectMesh: THREE.Line | null = null;
+  private transectStartMesh: THREE.Mesh | null = null;
+  private transectEndMesh: THREE.Mesh | null = null;
+  private profileScrubberMesh: THREE.Mesh | null = null;
 
   private animationFrameId: number | null = null;
   private isDisposed = false;
@@ -137,7 +146,8 @@ export class TerrainViewer {
     layer: AnalysisLayerType = 'elevation',
     layerData?: Float32Array | null,
     maxLayerVal = 1.0,
-    watershedMask?: Uint8Array | null
+    watershedMask?: Uint8Array | null,
+    blendOptions?: LayerBlendOptions
   ): void {
     this.clearCurrentMesh();
 
@@ -148,6 +158,7 @@ export class TerrainViewer {
       layerData,
       maxLayerVal,
       watershedMask,
+      blendOptions,
     });
 
     this.currentGeomData = geomData;
@@ -167,7 +178,8 @@ export class TerrainViewer {
     layer: AnalysisLayerType,
     layerData?: Float32Array | null,
     maxLayerVal = 1.0,
-    watershedMask?: Uint8Array | null
+    watershedMask?: Uint8Array | null,
+    blendOptions?: LayerBlendOptions
   ): void {
     if (!this.currentGeometry) return;
     updateTerrainGeometryColors(
@@ -176,7 +188,9 @@ export class TerrainViewer {
       layer,
       layerData,
       maxLayerVal,
-      watershedMask
+      watershedMask,
+      undefined,
+      blendOptions
     );
   }
 
@@ -299,6 +313,181 @@ export class TerrainViewer {
   }
 
   /**
+   * Updates the 3D draped elevation profile transect line and endpoint markers.
+   */
+  updateProfileTransect(
+    points: readonly ProfilePoint[] | null,
+    grid: ElevationGrid | null
+  ): void {
+    if (this.transectMesh) {
+      if (this.currentMesh) this.currentMesh.remove(this.transectMesh);
+      this.transectMesh.geometry.dispose();
+      (this.transectMesh.material as THREE.Material).dispose();
+      this.transectMesh = null;
+    }
+    if (this.transectStartMesh) {
+      if (this.currentMesh) this.currentMesh.remove(this.transectStartMesh);
+      this.transectStartMesh.geometry.dispose();
+      (this.transectStartMesh.material as THREE.Material).dispose();
+      this.transectStartMesh = null;
+    }
+    if (this.transectEndMesh) {
+      if (this.currentMesh) this.currentMesh.remove(this.transectEndMesh);
+      this.transectEndMesh.geometry.dispose();
+      (this.transectEndMesh.material as THREE.Material).dispose();
+      this.transectEndMesh = null;
+    }
+
+    if (!points || points.length < 2 || !this.currentGeomData || !this.currentMesh || !grid) {
+      return;
+    }
+
+    const geom = buildProfileTransectGeometry(points, this.currentGeomData);
+    if (!geom) return;
+
+    const material = new THREE.LineBasicMaterial({
+      color: 0xf72585,
+      linewidth: 3,
+      depthTest: true,
+    });
+
+    this.transectMesh = new THREE.Line(geom, material);
+    this.currentMesh.add(this.transectMesh);
+
+    // Marker for Point A (Cyan)
+    const pStart = points[0]!;
+    if (pStart.elevation !== null) {
+      const [x1, y1, z1] = gridCoordToWorld(
+        pStart.col,
+        pStart.row,
+        pStart.elevation,
+        this.currentGeomData,
+        1.0
+      );
+      const startGeom = new THREE.SphereGeometry(1.2, 16, 16);
+      const startMat = new THREE.MeshStandardMaterial({
+        color: 0x4cc9f0,
+        emissive: 0x4cc9f0,
+        emissiveIntensity: 0.8,
+        roughness: 0.2,
+      });
+      this.transectStartMesh = new THREE.Mesh(startGeom, startMat);
+      this.transectStartMesh.position.set(x1, y1, z1);
+      this.currentMesh.add(this.transectStartMesh);
+    }
+
+    // Marker for Point B (Magenta)
+    const pEnd = points[points.length - 1]!;
+    if (pEnd.elevation !== null) {
+      const [x2, y2, z2] = gridCoordToWorld(
+        pEnd.col,
+        pEnd.row,
+        pEnd.elevation,
+        this.currentGeomData,
+        1.0
+      );
+      const endGeom = new THREE.SphereGeometry(1.2, 16, 16);
+      const endMat = new THREE.MeshStandardMaterial({
+        color: 0xf72585,
+        emissive: 0xf72585,
+        emissiveIntensity: 0.8,
+        roughness: 0.2,
+      });
+      this.transectEndMesh = new THREE.Mesh(endGeom, endMat);
+      this.transectEndMesh.position.set(x2, y2, z2);
+      this.currentMesh.add(this.transectEndMesh);
+    }
+  }
+
+  /**
+   * Updates the 3D hover scrubber indicator marker along the transect.
+   */
+  updateProfileScrubber(point: ProfilePoint | null): void {
+    if (this.profileScrubberMesh) {
+      if (this.currentMesh) this.currentMesh.remove(this.profileScrubberMesh);
+      this.profileScrubberMesh.geometry.dispose();
+      (this.profileScrubberMesh.material as THREE.Material).dispose();
+      this.profileScrubberMesh = null;
+    }
+
+    if (!point || point.elevation === null || !this.currentGeomData || !this.currentMesh) {
+      return;
+    }
+
+    const [x, y, z] = gridCoordToWorld(
+      point.col,
+      point.row,
+      point.elevation,
+      this.currentGeomData,
+      1.2
+    );
+
+    const geom = new THREE.SphereGeometry(1.4, 16, 16);
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xffb703,
+      emissive: 0xffb703,
+      emissiveIntensity: 0.9,
+      roughness: 0.1,
+    });
+
+    this.profileScrubberMesh = new THREE.Mesh(geom, mat);
+    this.profileScrubberMesh.position.set(x, y, z);
+    this.currentMesh.add(this.profileScrubberMesh);
+  }
+
+  /**
+   * Transitions camera to bookmark presets:
+   * - 'top-down': 2D map view looking straight down from zenith
+   * - 'isometric': 45° isometric angle
+   * - 'oblique': Low-angle horizon perspective looking across the terrain
+   * - 'default': Standard 3D perspective inspection angle
+   */
+  setCameraPreset(preset: 'top-down' | 'isometric' | 'oblique' | 'default'): void {
+    if (preset === 'top-down') {
+      this.controls.target.set(0, 0, 0);
+      this.camera.position.set(0, 150, 0.001); // 0.001 z-offset avoids gimbal singularity
+    } else if (preset === 'isometric') {
+      this.controls.target.set(0, 5, 0);
+      this.camera.position.set(85, 85, 85);
+    } else if (preset === 'oblique') {
+      this.controls.target.set(0, 10, 0);
+      this.camera.position.set(0, 18, 120);
+    } else {
+      this.resetCamera();
+      return;
+    }
+    this.controls.update();
+  }
+
+  getDomCanvas(): HTMLCanvasElement {
+    return this.renderer.domElement;
+  }
+
+  renderNow(): void {
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  getCurrentGeomData(): TerrainGeometryData | null {
+    return this.currentGeomData;
+  }
+
+  getCameraAzimuth(): number {
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    return Math.atan2(dir.x, -dir.z);
+  }
+
+  calculateMetersPerPixel(): number {
+    if (!this.currentGeomData) return 0;
+    const dist = this.camera.position.distanceTo(this.controls.target);
+    const vFovRad = (this.camera.fov * Math.PI) / 180;
+    const worldHeight = 2 * Math.tan(vFovRad / 2) * dist;
+    const unitsPerPixel = worldHeight / Math.max(this.container.clientHeight, 1);
+    return unitsPerPixel / this.currentGeomData.horizontalScale;
+  }
+
+
+  /**
    * Raycasts the 3D terrain mesh from screen coordinates to identify the clicked raster cell.
    */
   raycastTerrain(
@@ -379,6 +568,26 @@ export class TerrainViewer {
       this.pourPointMesh.geometry.dispose();
       (this.pourPointMesh.material as THREE.Material).dispose();
       this.pourPointMesh = null;
+    }
+    if (this.transectMesh) {
+      this.transectMesh.geometry.dispose();
+      (this.transectMesh.material as THREE.Material).dispose();
+      this.transectMesh = null;
+    }
+    if (this.transectStartMesh) {
+      this.transectStartMesh.geometry.dispose();
+      (this.transectStartMesh.material as THREE.Material).dispose();
+      this.transectStartMesh = null;
+    }
+    if (this.transectEndMesh) {
+      this.transectEndMesh.geometry.dispose();
+      (this.transectEndMesh.material as THREE.Material).dispose();
+      this.transectEndMesh = null;
+    }
+    if (this.profileScrubberMesh) {
+      this.profileScrubberMesh.geometry.dispose();
+      (this.profileScrubberMesh.material as THREE.Material).dispose();
+      this.profileScrubberMesh = null;
     }
     if (this.currentMesh) {
       this.scene.remove(this.currentMesh);

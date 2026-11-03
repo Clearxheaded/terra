@@ -84,6 +84,28 @@ Terra is an open-source, browser-based geospatial analysis and 3D terrain visual
   - Computes contributing drainage area in $\text{km}^2$, total cell count, and basin percentage.
   - Traces the complete downstream flow path polyline from the selected point to the ocean/basin outlet.
 
+### Milestone 4 — Analysis Workspace
+- **Topographic Elevation Profiling (`src/features/analysis/profile.ts`)**:
+  - 2D cross-section elevation profiling along arbitrary user-defined transects.
+  - Bilinear interpolation with NoData-resilient normalized weighting across fractional grid coordinates.
+  - Calculates cumulative horizontal ground distance, cumulative 3D surface distance accounting for slope, min/max/mean elevation, and total elevation gain/loss.
+  - Interactive transect drawing tool: click endpoints A and B on the 3D terrain to define a cut.
+  - Responsive SVG cross-section profile drawer with area gradient fill, metric axes, and statistics row.
+  - Interactive hover scrubber synchronized with a real-time glowing 3D indicator marker on the terrain mesh.
+- **Multi-Layer Blending & Visualization Controls**:
+  - Real-time cartographic layer blending: base terrain (Elevation or Hillshade) blended with analysis overlays (Slope, Aspect, D8 Flow, Flow Accumulation).
+  - Configurable overlay opacity slider (0% to 100%).
+  - Mathematical blend modes: Normal (alpha interpolation), Multiply (modulates shaded relief over color ramps), and Overlay (contrast enhancement).
+  - Camera bookmark presets: Top-Down (2D orthographic map view), Isometric 45°, and Oblique low-angle horizon view.
+- **Real-Time Coordinate & Terrain Inspection HUD**:
+  - Live cursor hover inspection on the 3D terrain mesh.
+  - Monospace readout displaying raster cell $[col, row]$, geographic coordinates (Lat/Lon or Easting/Northing), elevation (meters and feet), local slope (degrees and percent), aspect (cardinal direction + degrees), and flow accumulation (contributing cells).
+- **Client-Side Geospatial Export Suite (`src/features/export/`)**:
+  - **High-Resolution Viewport PNG**: captures WebGL canvas with dynamic orientation compass rose (synchronized to camera azimuth) and metric scale bar.
+  - **32-Bit Float GeoTIFF Export**: encodes active analysis layer (Slope, Aspect, Flow Accumulation, or Elevation) into an authentic IEEE 754 32-bit floating point GeoTIFF with full ModelPixelScale, ModelTiepoint, and GeoKeyDirectory tags.
+  - **Vector GeoJSON Export**: exports extracted stream network channels as standard GeoJSON `LineString` features and delineated watershed boundaries as closed GeoJSON `Polygon` features.
+  - **Elevation Profile CSV**: exports sampled distance, elevation, coordinates, and slope data along transects.
+
 ---
 
 ## Architecture & Technology Stack
@@ -145,8 +167,8 @@ npm run build
 
 ## Next Milestone
 
-- **Milestone 4 — Analysis Workspace**:
-  - Multi-layer blending and opacity controls.
-  - Cross-section elevation profiling along user-drawn transects.
-  - Geographic coordinate readout and datum inspector.
-  - Export capabilities (GeoTIFF, GeoJSON stream vectors, PNG renders).
+- **Milestone 5 — Performance**:
+  - Web Worker integration for non-blocking asynchronous analysis computations.
+  - Chunked raster processing and memory-bounded tile streaming.
+  - Rendering performance optimizations (LOD mesh downsampling).
+  - Automated benchmark suite measuring throughput and memory consumption.

@@ -1,4 +1,11 @@
 import * as THREE from 'three';
+import {
+  blendRgb,
+  type BaseLayerType,
+  type BlendMode,
+  type OverlayLayerType,
+} from '@/features/analysis/blending';
+import type { ProfilePoint } from '@/features/analysis/profile';
 import type { AnalysisLayerType } from '@/features/analysis/types';
 import {
   evaluateAspectColor,
@@ -15,6 +22,16 @@ import {
 import { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import { evaluateColorRamp, TOPOGRAPHIC_RAMP, type ColorStop } from './color-ramps';
 
+export interface LayerBlendOptions {
+  baseLayer?: BaseLayerType;
+  baseLayerData?: Float32Array | null;
+  overlayLayer?: OverlayLayerType;
+  overlayLayerData?: Float32Array | null;
+  overlayOpacity?: number;
+  blendMode?: BlendMode;
+  maxOverlayVal?: number;
+}
+
 export interface TerrainMeshOptions {
   /** Target maximum horizontal dimension in Three.js world units (default: 100) */
   worldSize?: number;
@@ -22,7 +39,7 @@ export interface TerrainMeshOptions {
   colorRamp?: readonly ColorStop[];
   /** Wireframe mode */
   wireframe?: boolean;
-  /** Active analysis layer for vertex coloring */
+  /** Active analysis layer for vertex coloring (legacy single layer) */
   layer?: AnalysisLayerType;
   /** Pre-calculated data array for active analysis layer */
   layerData?: Float32Array | null;
@@ -30,6 +47,8 @@ export interface TerrainMeshOptions {
   maxLayerVal?: number;
   /** Binary mask (1 = in watershed, 0 = outside) for watershed highlight */
   watershedMask?: Uint8Array | null;
+  /** Multi-layer blending options */
+  blendOptions?: LayerBlendOptions;
 }
 
 export interface TerrainGeometryData {
@@ -48,8 +67,8 @@ export interface TerrainGeometryData {
 /**
  * Computes RGB vertex color based on active analysis layer.
  */
-function getVertexRgb(
-  layer: AnalysisLayerType,
+function computeSingleLayerRgb(
+  layer: AnalysisLayerType | BaseLayerType | OverlayLayerType,
   rawVal: number,
   idx: number,
   statsMin: number,
@@ -86,6 +105,69 @@ function getVertexRgb(
 }
 
 /**
+ * Computes blended RGB vertex color based on base and overlay layers.
+ */
+export function getVertexRgb(
+  layer: AnalysisLayerType,
+  rawVal: number,
+  idx: number,
+  statsMin: number,
+  elevationRange: number,
+  colorRamp: readonly ColorStop[],
+  layerData?: Float32Array | null,
+  maxLayerVal = 1.0,
+  blendOptions?: LayerBlendOptions
+): [r: number, g: number, b: number] {
+  if (!blendOptions || (!blendOptions.baseLayer && !blendOptions.overlayLayer)) {
+    return computeSingleLayerRgb(
+      layer,
+      rawVal,
+      idx,
+      statsMin,
+      elevationRange,
+      colorRamp,
+      layerData,
+      maxLayerVal
+    );
+  }
+
+  const baseLayer = blendOptions.baseLayer ?? 'elevation';
+  const baseRgb = computeSingleLayerRgb(
+    baseLayer,
+    rawVal,
+    idx,
+    statsMin,
+    elevationRange,
+    colorRamp,
+    blendOptions.baseLayerData
+  );
+
+  const overlayLayer = blendOptions.overlayLayer ?? 'none';
+  const overlayOpacity = blendOptions.overlayOpacity ?? 0;
+  if (overlayLayer === 'none' || overlayOpacity <= 0) {
+    return baseRgb;
+  }
+
+  const overlayRgb = computeSingleLayerRgb(
+    overlayLayer,
+    rawVal,
+    idx,
+    statsMin,
+    elevationRange,
+    colorRamp,
+    blendOptions.overlayLayerData,
+    blendOptions.maxOverlayVal ?? 1.0
+  );
+
+  return blendRgb(
+    baseRgb,
+    overlayRgb,
+    overlayOpacity,
+    blendOptions.blendMode ?? 'normal'
+  );
+}
+
+/**
  * In-place updates the vertex color buffer attribute without reallocating geometry.
  */
 export function updateTerrainGeometryColors(
@@ -95,7 +177,8 @@ export function updateTerrainGeometryColors(
   layerData?: Float32Array | null,
   maxLayerVal = 1.0,
   watershedMask?: Uint8Array | null,
-  colorRamp: readonly ColorStop[] = TOPOGRAPHIC_RAMP
+  colorRamp: readonly ColorStop[] = TOPOGRAPHIC_RAMP,
+  blendOptions?: LayerBlendOptions
 ): void {
   const colorsAttr = geometry.getAttribute('color') as THREE.BufferAttribute | undefined;
   if (!colorsAttr) return;
@@ -129,7 +212,8 @@ export function updateTerrainGeometryColors(
         elevationRange,
         colorRamp,
         layerData,
-        maxLayerVal
+        maxLayerVal,
+        blendOptions
       );
 
       // Apply watershed highlighting if active
@@ -237,7 +321,8 @@ export function buildTerrainGeometry(
           elevationRange,
           colorRamp,
           layerData,
-          options.maxLayerVal
+          options.maxLayerVal,
+          options.blendOptions
         );
         if (options.watershedMask && options.watershedMask.length === vertexCount) {
           if (options.watershedMask[idx] === 1) {
@@ -453,3 +538,35 @@ export function createTerrainMesh(
   mesh.receiveShadow = true;
   return mesh;
 }
+
+/**
+ * Builds a THREE.BufferGeometry representing the 3D draped elevation profile transect line.
+ */
+export function buildProfileTransectGeometry(
+  points: readonly ProfilePoint[],
+  geomData: TerrainGeometryData,
+  yOffset = 0.55
+): THREE.BufferGeometry | null {
+  if (points.length < 2) return null;
+
+  const { stepX, stepY, halfWidth, halfHeight, elevationScale, minElevation } = geomData;
+  const positions: number[] = [];
+
+  for (let i = 0; i < points.length; i++) {
+    const pt = points[i]!;
+    if (pt.elevation === null) continue;
+
+    const x = (pt.col - halfWidth) * stepX;
+    const z = (pt.row - halfHeight) * stepY;
+    const y = (pt.elevation - minElevation) * elevationScale + yOffset;
+
+    positions.push(x, y, z);
+  }
+
+  if (positions.length < 6) return null;
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  return geometry;
+}
+

@@ -1,4 +1,6 @@
 import React, { useRef } from 'react';
+import type { BaseLayerType, BlendMode, OverlayLayerType } from '@/features/analysis/blending';
+import type { ProfileResult } from '@/features/analysis/profile';
 import type {
   AnalysisLayerType,
   AspectResult,
@@ -6,6 +8,7 @@ import type {
   SlopeResult,
   SlopeUnit,
 } from '@/features/analysis/types';
+import type { TerrainViewer } from '@/features/terrain/terrain-viewer';
 import type {
   FlowAccumulationResult,
   FlowDirectionResult,
@@ -15,13 +18,16 @@ import type {
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
 import type { SyntheticTerrainOptions } from '@/lib/geospatial/synthetic-terrain';
 import { AnalysisPanel } from './AnalysisPanel';
+import { ExportPanel } from './ExportPanel';
 import { HydrologyPanel } from './HydrologyPanel';
 
 interface SidebarProps {
   grid: ElevationGrid | null;
+  viewerRef: React.RefObject<TerrainViewer | null>;
   warnings: string[];
   activeLayer: AnalysisLayerType;
   onLayerChange: (layer: AnalysisLayerType) => void;
+  activeLayerData: Float32Array | null;
   slopeResult: SlopeResult | null;
   aspectResult: AspectResult | null;
   hillshadeResult: HillshadeResult | null;
@@ -35,6 +41,27 @@ interface SidebarProps {
   onVerticalExaggerationChange: (val: number) => void;
   wireframe: boolean;
   onWireframeChange: (val: boolean) => void;
+  // Multi-layer blending props
+  isBlendingEnabled: boolean;
+  onToggleBlending: (enabled: boolean) => void;
+  baseLayer: BaseLayerType;
+  onBaseLayerChange: (base: BaseLayerType) => void;
+  overlayLayer: OverlayLayerType;
+  onOverlayLayerChange: (overlay: OverlayLayerType) => void;
+  overlayOpacity: number;
+  onOverlayOpacityChange: (opacity: number) => void;
+  blendMode: BlendMode;
+  onBlendModeChange: (mode: BlendMode) => void;
+  // Elevation Profile props
+  activeMode: 'inspect' | 'transect-a' | 'transect-b';
+  onStartTransect: () => void;
+  onCancelTransect: () => void;
+  profileResult: ProfileResult | null;
+  isProfileOpen: boolean;
+  onToggleProfileOpen: (open: boolean) => void;
+  onClearProfile: () => void;
+  // Camera presets
+  onSetCameraPreset: (preset: 'top-down' | 'isometric' | 'oblique' | 'default') => void;
   // Hydrology props
   isConditioned: boolean;
   onToggleConditioned: (conditioned: boolean) => void;
@@ -46,6 +73,7 @@ interface SidebarProps {
   onToggleStreamNetwork: (show: boolean) => void;
   activeWatershed: WatershedResult | null;
   tracedFlowPath: readonly FlowPathPoint[] | null;
+  pourPoint: { col: number; row: number } | null;
   onClearInspection: () => void;
   onFileUpload: (file: File) => void;
   onLoadSynthetic: (type: SyntheticTerrainOptions['type']) => void;
@@ -56,9 +84,11 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({
   grid,
+  viewerRef,
   warnings,
   activeLayer,
   onLayerChange,
+  activeLayerData,
   slopeResult,
   aspectResult,
   hillshadeResult,
@@ -72,6 +102,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onVerticalExaggerationChange,
   wireframe,
   onWireframeChange,
+  isBlendingEnabled,
+  onToggleBlending,
+  baseLayer,
+  onBaseLayerChange,
+  overlayLayer,
+  onOverlayLayerChange,
+  overlayOpacity,
+  onOverlayOpacityChange,
+  blendMode,
+  onBlendModeChange,
+  activeMode,
+  onStartTransect,
+  onCancelTransect,
+  profileResult,
+  isProfileOpen,
+  onToggleProfileOpen,
+  onClearProfile,
+  onSetCameraPreset,
   isConditioned,
   onToggleConditioned,
   flowDirResult,
@@ -82,6 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleStreamNetwork,
   activeWatershed,
   tracedFlowPath,
+  pourPoint,
   onClearInspection,
   onFileUpload,
   onLoadSynthetic,
@@ -96,7 +145,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
     const file = e.target.files?.[0];
     if (file) {
       onFileUpload(file);
-      // Reset input value so the same file can be reloaded if selected again
       e.target.value = '';
     }
   };
@@ -160,7 +208,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </section>
 
-      {/* Terrain Analysis Layer & Controls */}
+      {/* Terrain Analysis Layer & Blending Controls */}
       <AnalysisPanel
         grid={grid}
         activeLayer={activeLayer}
@@ -175,7 +223,86 @@ export const Sidebar: React.FC<SidebarProps> = ({
         onSunAzimuthChange={onSunAzimuthChange}
         sunAltitude={sunAltitude}
         onSunAltitudeChange={onSunAltitudeChange}
+        isBlendingEnabled={isBlendingEnabled}
+        onToggleBlending={onToggleBlending}
+        baseLayer={baseLayer}
+        onBaseLayerChange={onBaseLayerChange}
+        overlayLayer={overlayLayer}
+        onOverlayLayerChange={onOverlayLayerChange}
+        overlayOpacity={overlayOpacity}
+        onOverlayOpacityChange={onOverlayOpacityChange}
+        blendMode={blendMode}
+        onBlendModeChange={onBlendModeChange}
       />
+
+      {/* Topographic Profile Transect Tool */}
+      <section className="sidebar-section">
+        <h2 className="section-title">Elevation Profile Transect</h2>
+
+        {activeMode === 'transect-a' || activeMode === 'transect-b' ? (
+          <div style={{ marginBottom: '0.75rem' }}>
+            <div className="alert alert-info" style={{ padding: '0.5rem 0.75rem', fontSize: '0.8rem', marginBottom: '0.5rem' }}>
+              {activeMode === 'transect-a'
+                ? '📍 Click 1st point on 3D terrain to start transect (Point A)'
+                : '🎯 Click 2nd point on 3D terrain to finish cut (Point B)'}
+            </div>
+            <button
+              type="button"
+              className="button button-sm button-ghost"
+              style={{ width: '100%' }}
+              onClick={onCancelTransect}
+            >
+              Cancel Transect
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginBottom: '0.75rem' }}>
+            <button
+              type="button"
+              className="button button-sm button-primary"
+              style={{ width: '100%', marginBottom: '0.5rem' }}
+              onClick={onStartTransect}
+              disabled={!grid}
+            >
+              📏 Draw 2D Profile Transect
+            </button>
+          </div>
+        )}
+
+        {profileResult && (
+          <div style={{ background: 'var(--surface-color)', padding: '0.65rem 0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+              <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>Active Profile</span>
+              <span className="badge badge-primary">{profileResult.points.length} samples</span>
+            </div>
+            <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', marginBottom: '0.6rem' }}>
+              <div>Dist: <strong>{(profileResult.totalHorizontalDistance / 1000).toFixed(2)} km</strong></div>
+              <div>Span: <strong>{Math.round(profileResult.minElevation)}–{Math.round(profileResult.maxElevation)}m</strong></div>
+              <div>Gain: <strong style={{ color: 'var(--accent-primary)' }}>+{Math.round(profileResult.elevationGain)}m</strong></div>
+              <div>Loss: <strong style={{ color: 'var(--accent-danger)' }}>-{Math.round(profileResult.elevationLoss)}m</strong></div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.4rem' }}>
+              <button
+                type="button"
+                className="button button-sm button-secondary"
+                style={{ flex: 1 }}
+                onClick={() => onToggleProfileOpen(!isProfileOpen)}
+              >
+                {isProfileOpen ? 'Hide Chart' : 'Show Chart'}
+              </button>
+              <button
+                type="button"
+                className="button button-sm button-ghost"
+                onClick={onClearProfile}
+                title="Clear current profile transect"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
 
       {/* Hydrology Workspace Controls */}
       <HydrologyPanel
@@ -195,6 +322,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* 3D Visualization Controls */}
       <section className="sidebar-section">
         <h2 className="section-title">3D Visualization</h2>
+
+        <div className="control-group" style={{ marginBottom: '0.85rem' }}>
+          <div className="control-label" style={{ marginBottom: '0.35rem' }}>
+            <span>Camera Bookmarks</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
+            <button
+              type="button"
+              className="button button-sm button-secondary"
+              onClick={() => onSetCameraPreset('top-down')}
+              title="Orthographic Top-Down 2D Map View"
+            >
+              🗺️ Top-Down
+            </button>
+            <button
+              type="button"
+              className="button button-sm button-secondary"
+              onClick={() => onSetCameraPreset('isometric')}
+              title="45° Isometric Perspective View"
+            >
+              📐 45° Isometric
+            </button>
+            <button
+              type="button"
+              className="button button-sm button-secondary"
+              onClick={() => onSetCameraPreset('oblique')}
+              title="Low-Angle Horizon Oblique Perspective"
+            >
+              🌅 Oblique
+            </button>
+            <button
+              type="button"
+              className="button button-sm button-secondary"
+              onClick={() => onSetCameraPreset('default')}
+              title="Reset Default Orbit Perspective"
+            >
+              🔄 Default View
+            </button>
+          </div>
+        </div>
 
         <div className="control-group">
           <div className="control-label">
@@ -227,6 +394,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
           Reset Camera View
         </button>
       </section>
+
+      {/* Geospatial Export Suite */}
+      <ExportPanel
+        grid={grid}
+        viewerRef={viewerRef}
+        activeLayer={activeLayer}
+        activeLayerData={activeLayerData}
+        flowDirData={flowDirResult?.data ?? null}
+        flowAccumData={flowAccumResult?.data ?? null}
+        streamThreshold={streamThreshold}
+        watershedMask={activeWatershed?.mask ?? null}
+        pourPoint={pourPoint}
+        watershedAreaKm2={activeWatershed?.areaKm2}
+        profileResult={profileResult}
+      />
 
       {/* Warnings & Geospatial Integrity */}
       {warnings.length > 0 && (

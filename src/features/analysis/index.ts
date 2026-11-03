@@ -4,4 +4,6 @@ export * from './slope';
 export * from './aspect';
 export * from './hillshade';
 export * from './color-ramps';
+export * from './profile';
+export * from './blending';
 
