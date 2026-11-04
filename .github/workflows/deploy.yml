@@ -35,7 +35,7 @@ jobs:
 
       - name: Build Static Production Assets
         env:
-          BASE_URL: './'
+          BASE_URL: '/terra/'
         run: npm run build
 
       - name: Setup Pages

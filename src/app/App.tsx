@@ -237,7 +237,7 @@ export const App: React.FC = () => {
 
   const handleLoadSampleFile = useCallback(
     async (
-      sampleUrl = '/samples/mount_st_helens.tif',
+      sampleUrl = 'samples/mount_st_helens.tif',
       datasetTitle = 'Mount St. Helens (USGS 3DEP 30m)'
     ) => {
       setIsLoading(true);
@@ -248,7 +248,16 @@ export const App: React.FC = () => {
       setActiveMode('inspect');
       setIsProfileOpen(false);
       try {
-        const response = await fetch(sampleUrl);
+        const cleanPath = sampleUrl.startsWith('/') ? sampleUrl.slice(1) : sampleUrl;
+        const baseUrl = import.meta.env.BASE_URL.endsWith('/')
+          ? import.meta.env.BASE_URL
+          : `${import.meta.env.BASE_URL}/`;
+        const resolvedUrl =
+          sampleUrl.startsWith('http://') || sampleUrl.startsWith('https://')
+            ? sampleUrl
+            : `${baseUrl}${cleanPath}`;
+
+        const response = await fetch(resolvedUrl);
         if (!response.ok) {
           throw new Error(`Failed to load sample dataset: ${response.statusText}`);
         }

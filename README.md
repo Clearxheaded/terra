@@ -1,12 +1,15 @@
 # Terra — Open-Source Geospatial Analysis & 3D Terrain Platform
 
-[![Terra CI](https://github.com/username/terra/actions/workflows/ci.yml/badge.svg)](https://github.com/username/terra/actions/workflows/ci.yml)
-[![Deploy to GitHub Pages](https://github.com/username/terra/actions/workflows/deploy.yml/badge.svg)](https://github.com/username/terra/actions/workflows/deploy.yml)
+[![Terra CI](https://github.com/Clearxheaded/terra/actions/workflows/ci.yml/badge.svg)](https://github.com/Clearxheaded/terra/actions/workflows/ci.yml)
+[![Deploy to GitHub Pages](https://github.com/Clearxheaded/terra/actions/workflows/deploy.yml/badge.svg)](https://github.com/Clearxheaded/terra/actions/workflows/deploy.yml)
+[![Live Demo](https://img.shields.io/badge/Demo-Live%20on%20GitHub%20Pages-success.svg)](https://clearxheaded.github.io/terra/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8_Strict-blue.svg)](https://www.typescriptlang.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Zero Backend](https://img.shields.io/badge/Architecture-100%25_Client--Side-brightgreen.svg)](#architecture--technology-stack)
+[![Zero Backend](https://img.shields.io/badge/Architecture-100%25_Client--Side-brightgreen.svg)](#architecture-overview)
 
 **Terra** is a modern, high-performance, browser-based geospatial analysis and 3D terrain exploration engine. It empowers hydrologists, environmental scientists, cartographers, and geospatial engineers to analyze Digital Elevation Models (DEMs), evaluate topographic derivatives, route hydrological flow networks, delineate contributing watersheds, and generate cross-sectional elevation profiles—all completely within the browser using WebGL and multi-threaded Web Workers.
+
+A live demonstration is available on GitHub Pages: **[https://clearxheaded.github.io/terra/](https://clearxheaded.github.io/terra/)**.
 
 Terra requires **no servers, no backend processing, no cloud APIs, and no paid subscriptions**.
 
@@ -133,7 +136,7 @@ Benchmarked on modern hardware (AMD Ryzen / Apple Silicon) using multi-threaded 
 
 ### Installation
 ```bash
-git clone https://github.com/username/terra.git
+git clone https://github.com/Clearxheaded/terra.git
 cd terra
 npm install
 ```
@@ -170,7 +173,6 @@ npm run build
 
 - [Architectural Specification & Mathematical Derivations (`docs/architecture.md`)](docs/architecture.md)
 - [Sample DEM Datasets & Licensing (`public/samples/README.md`)](public/samples/README.md)
-- [Development Progress Log (`PROGRESS.md`)](PROGRESS.md)
 
 ---
 

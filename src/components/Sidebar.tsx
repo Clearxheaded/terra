@@ -183,7 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="button"
             style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '0.45rem 0.65rem' }}
             onClick={() =>
-              onLoadSampleFile('/samples/mount_st_helens.tif', 'Mount St. Helens (USGS 3DEP 30m)')
+              onLoadSampleFile('samples/mount_st_helens.tif', 'Mount St. Helens (USGS 3DEP 30m)')
             }
             disabled={isLoading}
             data-testid="sample-mount-st-helens"
@@ -200,7 +200,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="button"
             style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '0.45rem 0.65rem' }}
             onClick={() =>
-              onLoadSampleFile('/samples/drainage_basin.tif', 'Eagle Creek Basin (30m UTM)')
+              onLoadSampleFile('samples/drainage_basin.tif', 'Eagle Creek Basin (30m UTM)')
             }
             disabled={isLoading}
             data-testid="sample-drainage-basin"
@@ -217,7 +217,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="button"
             style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '0.45rem 0.65rem' }}
             onClick={() =>
-              onLoadSampleFile('/samples/sample_dem.tif', 'Sample Volcanic Peak (30m UTM)')
+              onLoadSampleFile('samples/sample_dem.tif', 'Sample Volcanic Peak (30m UTM)')
             }
             disabled={isLoading}
             data-testid="sample-volcanic-peak"

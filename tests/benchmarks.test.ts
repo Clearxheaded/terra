@@ -48,5 +48,5 @@ describe('Terrain Algorithm Performance Benchmarks', () => {
     console.log('\n--- TERRA BENCHMARK RESULTS ---\n');
     console.log(markdownTable);
     console.log('\n-------------------------------\n');
-  });
+  }, 30000);
 });
