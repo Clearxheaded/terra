@@ -37,80 +37,79 @@ export const HydrologyPanel: React.FC<HydrologyPanelProps> = ({
   const sliderMax = Math.min(Math.max(500, Math.floor(maxAccum * 0.5)), 5000);
 
   return (
-    <section className="sidebar-section">
-      <h2 className="section-title">Hydrological Analysis</h2>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
       {/* DEM Conditioning Mode */}
       <div className="control-group">
         <div className="control-label">
-          <span>Surface Routing Conditioning</span>
-          <span className="badge">{isConditioned ? 'Conditioned' : 'Raw DEM'}</span>
+          <span>Routing Conditioning</span>
+          <span className="control-value">{isConditioned ? 'Priority-Flood' : 'Raw DEM'}</span>
         </div>
-        <div className="button-group" style={{ marginTop: '0.4rem' }}>
+        <div className="segmented-control" style={{ marginTop: '0.35rem' }}>
           <button
             type="button"
-            className={`button ${!isConditioned ? 'active' : ''}`}
-            style={{
-              flex: 1,
-              background: !isConditioned ? 'var(--accent-primary)' : undefined,
-              color: !isConditioned ? '#fff' : undefined,
-            }}
+            className={`segmented-btn ${!isConditioned ? 'active' : ''}`}
             onClick={() => onToggleConditioned(false)}
           >
             Raw DEM
           </button>
           <button
             type="button"
-            className={`button ${isConditioned ? 'active' : ''}`}
-            style={{
-              flex: 1,
-              background: isConditioned ? 'var(--accent-primary)' : undefined,
-              color: isConditioned ? '#fff' : undefined,
-            }}
+            className={`segmented-btn ${isConditioned ? 'active' : ''}`}
             onClick={() => onToggleConditioned(true)}
           >
             Priority-Flood
           </button>
         </div>
-        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.35rem', lineHeight: 1.4 }}>
           {isConditioned
-            ? 'Barnes Priority-Flood filled all depression pits to minimum spillway elevation.'
-            : 'Raw terrain routing: flow stops at natural sinks, pits, and local depressions.'}
+            ? 'Barnes Priority-Flood: sinks & depression pits raised to minimum spillway.'
+            : 'Raw terrain routing: flow terminates at natural pits and local depressions.'}
+          {flowDirResult && (
+            <div style={{ marginTop: '0.2rem' }}>
+              Pits / Sinks: <strong className="monospace">{flowDirResult.pitCount}</strong>
+            </div>
+          )}
         </div>
       </div>
 
       {/* 3D Stream Network Overlay */}
-      <div className="control-group" style={{ marginTop: '0.9rem' }}>
+      <div className="control-group">
         <div className="toggle-row">
           <span>Drape 3D Stream Channels</span>
-          <input
-            type="checkbox"
-            checked={showStreamNetwork}
-            onChange={(e) => onToggleStreamNetwork(e.target.checked)}
-            style={{ cursor: 'pointer', transform: 'scale(1.15)' }}
-          />
+          <label className="checkbox-label">
+            <input
+              type="checkbox"
+              checked={showStreamNetwork}
+              onChange={(e) => onToggleStreamNetwork(e.target.checked)}
+            />
+            <span style={{ fontSize: '0.75rem' }}>{showStreamNetwork ? 'Visible' : 'Hidden'}</span>
+          </label>
         </div>
 
         {showStreamNetwork && (
-          <div style={{ marginTop: '0.5rem' }}>
+          <div style={{ marginTop: '0.45rem' }}>
             <div className="control-label">
-              <span>Channel Initiation Threshold</span>
+              <span>Channel Threshold</span>
               <span className="control-value">{streamThreshold} cells</span>
             </div>
-            <input
-              type="range"
-              min="5"
-              max={sliderMax}
-              step="5"
-              value={streamThreshold}
-              onChange={(e) => onStreamThresholdChange(Number(e.target.value))}
-            />
+            <div className="slider-container">
+              <input
+                type="range"
+                min="5"
+                max={sliderMax}
+                step="5"
+                className="slider"
+                value={streamThreshold}
+                onChange={(e) => onStreamThresholdChange(Number(e.target.value))}
+              />
+            </div>
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                fontSize: '0.7rem',
+                fontSize: '0.68rem',
                 color: 'var(--text-muted)',
+                marginTop: '0.2rem',
               }}
             >
               <span>5 (Dense rivulets)</span>
@@ -123,12 +122,12 @@ export const HydrologyPanel: React.FC<HydrologyPanelProps> = ({
       {/* Interactive Pour Point & Watershed Inspection */}
       <div className="inspection-card">
         <div className="inspection-card-header">
-          <span>Watershed & Flow Inspection</span>
+          <span>Watershed &amp; Flow Delineation</span>
           {activeWatershed && (
             <button
               type="button"
-              className="button"
-              style={{ padding: '0.15rem 0.5rem', fontSize: '0.7rem' }}
+              className="button button-sm button-ghost"
+              style={{ padding: '0.1rem 0.4rem', fontSize: '0.68rem' }}
               onClick={onClearInspection}
             >
               Clear
@@ -141,63 +140,44 @@ export const HydrologyPanel: React.FC<HydrologyPanelProps> = ({
             <tbody>
               <tr>
                 <td>Pour Point:</td>
-                <td>
-                  Col {activeWatershed.pourPoint.col}, Row {activeWatershed.pourPoint.row}
+                <td className="monospace">
+                  [{activeWatershed.pourPoint.col}, {activeWatershed.pourPoint.row}]
                 </td>
               </tr>
               {tracedFlowPath && tracedFlowPath.length > 0 && (
                 <tr>
                   <td>Pour Elevation:</td>
-                  <td>{tracedFlowPath[0]!.elevation.toFixed(1)} m</td>
+                  <td className="monospace">{tracedFlowPath[0]!.elevation.toFixed(1)} m</td>
                 </tr>
               )}
               <tr>
                 <td>Contributing Area:</td>
-                <td style={{ color: '#38bdf8', fontWeight: 700 }}>
+                <td className="monospace" style={{ color: 'var(--accent-primary)', fontWeight: 600 }}>
                   {activeWatershed.areaKm2.toFixed(3)} km²
                 </td>
               </tr>
               <tr>
-                <td>Watershed Cells:</td>
-                <td>
-                  {activeWatershed.cellCount.toLocaleString()} ({activeWatershed.areaPercent.toFixed(1)}%)
+                <td>Drainage Basin Cells:</td>
+                <td className="monospace">
+                  {activeWatershed.cellCount.toLocaleString()} cells ({activeWatershed.areaPercent.toFixed(1)}%)
                 </td>
               </tr>
               {tracedFlowPath && (
                 <tr>
-                  <td>Downstream Path:</td>
-                  <td style={{ color: '#f59e0b' }}>
-                    {tracedFlowPath.length} steps to outlet
+                  <td>Flow Path Steps:</td>
+                  <td className="monospace">
+                    {tracedFlowPath.length} steps
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         ) : (
-          <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-            🎯 Click any point on the 3D terrain to delineate its contributing watershed basin and trace downstream water flow.
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.45 }}>
+            Click anywhere on the 3D terrain to place a pour point, delineate upstream watershed basin, and trace downstream drainage.
           </div>
         )}
       </div>
-
-      {/* Hydrology Statistics */}
-      {flowAccumResult && flowDirResult && (
-        <div className="stats-grid" style={{ marginTop: '0.85rem' }}>
-          <div className="stat-card">
-            <div className="stat-label">Max Accumulation</div>
-            <div className="stat-value">{flowAccumResult.max.toLocaleString()}</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>cells</div>
-          </div>
-          <div className="stat-card">
-            <div className="stat-label">Natural Pits / Sinks</div>
-            <div className="stat-value">{flowDirResult.pitCount}</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-              {isConditioned ? '0 interior pits' : 'unconditioned'}
-            </div>
-          </div>
-        </div>
-      )}
-    </section>
+    </div>
   );
 };
-

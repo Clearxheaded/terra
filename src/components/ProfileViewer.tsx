@@ -25,8 +25,8 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
 
   // Chart dimensions and margins
   const width = 800;
-  const height = 220;
-  const padding = { top: 25, right: 30, bottom: 35, left: 65 };
+  const height = 200;
+  const padding = { top: 20, right: 25, bottom: 30, left: 55 };
   const plotWidth = width - padding.left - padding.right;
   const plotHeight = height - padding.top - padding.bottom;
 
@@ -68,7 +68,7 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
   const lastPt = points[points.length - 1]!;
   areaD += ` L ${getX(lastPt.distanceHorizontal).toFixed(1)} ${padding.top + plotHeight} Z`;
 
-  // X Axis Ticks (4 intervals)
+  // X Axis Ticks (5 intervals)
   const xTicks = [0, 0.25, 0.5, 0.75, 1.0].map((t) => {
     const dist = t * totalHorizontalDistance;
     const label = dist >= 1000 ? `${(dist / 1000).toFixed(1)} km` : `${Math.round(dist)} m`;
@@ -121,12 +121,14 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
     <div className="profile-viewer-panel">
       <div className="profile-viewer-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ fontSize: '1.2rem' }}>📈</span>
-          <span style={{ fontWeight: 600, fontSize: '0.95rem' }}>Topographic Cross-Section</span>
-          <span className="badge badge-primary">2D Profile Transect</span>
+          <span style={{ fontSize: '1rem' }}>📈</span>
+          <span style={{ fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            Elevation Cross-Section Transect
+          </span>
+          <span className="badge badge-primary">{points.length} samples</span>
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
           <button
             type="button"
             className="button button-sm button-secondary"
@@ -139,7 +141,7 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
             type="button"
             className="button button-sm button-ghost"
             onClick={onClose}
-            title="Close elevation profile"
+            title="Close elevation profile drawer (Esc)"
           >
             ✕
           </button>
@@ -149,16 +151,16 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
       {/* Metrics Row */}
       <div className="profile-metrics-row">
         <div className="profile-stat-box">
-          <div className="stat-label">Ground Distance</div>
-          <div className="stat-val">
+          <div className="stat-label">Horizontal Distance</div>
+          <div className="stat-val monospace">
             {totalHorizontalDistance >= 1000
               ? `${(totalHorizontalDistance / 1000).toFixed(2)} km`
               : `${Math.round(totalHorizontalDistance)} m`}
           </div>
         </div>
         <div className="profile-stat-box">
-          <div className="stat-label">Surface 3D Dist</div>
-          <div className="stat-val">
+          <div className="stat-label">3D Surface Distance</div>
+          <div className="stat-val monospace">
             {profile.totalSurfaceDistance >= 1000
               ? `${(profile.totalSurfaceDistance / 1000).toFixed(2)} km`
               : `${Math.round(profile.totalSurfaceDistance)} m`}
@@ -166,14 +168,16 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
         </div>
         <div className="profile-stat-box">
           <div className="stat-label">Elevation Min/Max</div>
-          <div className="stat-val">
+          <div className="stat-val monospace">
             {Math.round(minElevation)}m – {Math.round(maxElevation)}m
           </div>
         </div>
         <div className="profile-stat-box">
-          <div className="stat-label">Total Gain / Loss</div>
-          <div className="stat-val" style={{ color: 'var(--accent-primary)' }}>
-            +{Math.round(profile.elevationGain)}m / -{Math.round(profile.elevationLoss)}m
+          <div className="stat-label">Elevation Gain / Loss</div>
+          <div className="stat-val monospace">
+            <span style={{ color: 'var(--accent-primary)' }}>+{Math.round(profile.elevationGain)}m</span>
+            {' / '}
+            <span style={{ color: 'var(--accent-danger)' }}>-{Math.round(profile.elevationLoss)}m</span>
           </div>
         </div>
       </div>
@@ -189,8 +193,8 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
         >
           <defs>
             <linearGradient id="profileAreaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#4cc9f0" stopOpacity="0.38" />
-              <stop offset="100%" stopColor="#4cc9f0" stopOpacity="0.04" />
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
             </linearGradient>
           </defs>
 
@@ -202,12 +206,12 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
                 y1={tick.y}
                 x2={padding.left + plotWidth}
                 y2={tick.y}
-                stroke="rgba(255, 255, 255, 0.08)"
+                stroke="rgba(255, 255, 255, 0.06)"
                 strokeDasharray="3 3"
               />
               <text
                 x={padding.left - 8}
-                y={tick.y + 4}
+                y={tick.y + 3.5}
                 textAnchor="end"
                 className="profile-axis-text"
               >
@@ -223,12 +227,12 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
                 y1={padding.top}
                 x2={tick.x}
                 y2={padding.top + plotHeight}
-                stroke="rgba(255, 255, 255, 0.08)"
+                stroke="rgba(255, 255, 255, 0.06)"
                 strokeDasharray="3 3"
               />
               <text
                 x={tick.x}
-                y={padding.top + plotHeight + 18}
+                y={padding.top + plotHeight + 16}
                 textAnchor="middle"
                 className="profile-axis-text"
               >
@@ -243,14 +247,14 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
             y1={padding.top + plotHeight}
             x2={padding.left + plotWidth}
             y2={padding.top + plotHeight}
-            stroke="rgba(255, 255, 255, 0.25)"
+            stroke="rgba(255, 255, 255, 0.15)"
           />
           <line
             x1={padding.left}
             y1={padding.top}
             x2={padding.left}
             y2={padding.top + plotHeight}
-            stroke="rgba(255, 255, 255, 0.25)"
+            stroke="rgba(255, 255, 255, 0.15)"
           />
 
           {/* Topographic cut fill & curve */}
@@ -258,8 +262,8 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
           <path
             d={pathD}
             fill="none"
-            stroke="#4cc9f0"
-            strokeWidth="2.5"
+            stroke="#10b981"
+            strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
           />
@@ -273,43 +277,43 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
                 y1={padding.top}
                 x2={getX(currentPt.distanceHorizontal)}
                 y2={padding.top + plotHeight}
-                stroke="#ffb703"
+                stroke="#38bdf8"
                 strokeWidth="1.5"
-                strokeDasharray="4 2"
+                strokeDasharray="3 2"
               />
               {/* Highlight dot on curve */}
               <circle
                 cx={getX(currentPt.distanceHorizontal)}
                 cy={getY(currentPt.elevation)}
-                r="5"
-                fill="#ffb703"
-                stroke="#0d1117"
+                r="4.5"
+                fill="#38bdf8"
+                stroke="#090d16"
                 strokeWidth="2"
               />
 
               {/* Scrubber Tooltip */}
               <g
                 transform={`translate(${Math.max(
-                  padding.left + 50,
-                  Math.min(padding.left + plotWidth - 70, getX(currentPt.distanceHorizontal))
-                )}, ${Math.max(padding.top + 18, getY(currentPt.elevation) - 16)})`}
+                  padding.left + 55,
+                  Math.min(padding.left + plotWidth - 75, getX(currentPt.distanceHorizontal))
+                )}, ${Math.max(padding.top + 16, getY(currentPt.elevation) - 14)})`}
               >
                 <rect
-                  x="-65"
+                  x="-70"
                   y="-18"
-                  width="130"
+                  width="140"
                   height="22"
                   rx="4"
-                  fill="rgba(13, 17, 23, 0.9)"
-                  stroke="#ffb703"
+                  fill="rgba(9, 13, 22, 0.94)"
+                  stroke="#38bdf8"
                   strokeWidth="1"
                 />
                 <text
                   x="0"
-                  y="-3"
+                  y="-3.5"
                   textAnchor="middle"
                   fill="#ffffff"
-                  fontSize="11"
+                  fontSize="10.5"
                   fontFamily="monospace"
                 >
                   {Math.round(currentPt.elevation)}m |{' '}
@@ -326,4 +330,3 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
     </div>
   );
 };
-

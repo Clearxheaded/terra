@@ -116,7 +116,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
   const hasWatershed = watershedMask && pourPoint;
 
   return (
-    <section className="sidebar-section">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <h2 className="section-title">Geospatial Data Export</h2>
 
       {statusMessage && (
@@ -215,7 +215,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
           </button>
         </div>
       )}
-    </section>
+    </div>
   );
 };
 

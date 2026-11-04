@@ -334,20 +334,6 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
         onToggleHiDpi={onToggleHiDpi}
       />
 
-      {/* Navigation & Controls Hints */}
-      <div className="viewport-hud">
-        <div><strong>Left Click + Drag:</strong> Rotate Orbit</div>
-        <div><strong>Right Click + Drag:</strong> Pan Ground</div>
-        <div><strong>Scroll Wheel:</strong> Zoom</div>
-        <div style={{ marginTop: '0.35rem', color: 'var(--accent-primary)', fontWeight: 600 }}>
-          {activeMode === 'transect-a'
-            ? '📍 Click terrain to set Point A (transect start)'
-            : activeMode === 'transect-b'
-              ? '🎯 Click terrain to set Point B (transect end)'
-              : '🎯 Click terrain surface to inspect pour point & delineate watershed'}
-        </div>
-      </div>
-
       {/* Loading overlay */}
       {isLoading && (
         <div className="loading-overlay">

@@ -427,6 +427,73 @@ export const App: React.FC = () => {
     };
   }, [handleFileUpload]);
 
+  // Global Keyboard Shortcuts Listener
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore keystrokes when typing in inputs or textareas
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+
+      // Layer selection 1-6
+      if (e.key === '1') {
+        setActiveLayer('elevation');
+      } else if (e.key === '2') {
+        setActiveLayer('slope');
+      } else if (e.key === '3') {
+        setActiveLayer('aspect');
+      } else if (e.key === '4') {
+        setActiveLayer('hillshade');
+      } else if (e.key === '5') {
+        setActiveLayer('d8-flow');
+      } else if (e.key === '6') {
+        setActiveLayer('flow-accumulation');
+      } else if (e.key === 'r' || e.key === 'R') {
+        handleResetCamera();
+      } else if (e.key === 't' || e.key === 'T') {
+        handleSetCameraPreset('top-down');
+      } else if (e.key === 'i' || e.key === 'I') {
+        handleSetCameraPreset('isometric');
+      } else if (e.key === 'o' || e.key === 'O') {
+        handleSetCameraPreset('oblique');
+      } else if (e.key === 'p' || e.key === 'P') {
+        if (activeMode === 'transect-a' || activeMode === 'transect-b') {
+          handleCancelTransect();
+        } else {
+          handleStartTransect();
+        }
+      } else if (e.key === 'Escape') {
+        if (activeMode === 'transect-a' || activeMode === 'transect-b') {
+          handleCancelTransect();
+        } else if (isProfileOpen) {
+          setIsProfileOpen(false);
+        }
+      } else if (e.key === 'f' || e.key === 'F') {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [
+    activeMode,
+    isProfileOpen,
+    handleResetCamera,
+    handleSetCameraPreset,
+    handleStartTransect,
+    handleCancelTransect,
+  ]);
+
   return (
     <div className="app-container">
       {/* Full-Viewport Drag & Drop Overlay */}
