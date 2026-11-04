@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
+import { IconClose, IconKeyboard } from './common/Icons';
 
 interface HeaderProps {
   grid: ElevationGrid | null;
@@ -50,9 +51,9 @@ export const Header: React.FC<HeaderProps> = ({ grid }) => {
             className="button button-sm button-ghost"
             onClick={() => setShowShortcuts((prev) => !prev)}
             title="Keyboard shortcuts & controls guide"
-            style={{ fontSize: '0.75rem', gap: '0.35rem' }}
+            style={{ fontSize: '0.75rem', gap: '0.35rem', display: 'flex', alignItems: 'center' }}
           >
-            <span style={{ fontSize: '0.9rem' }}>⌨️</span>
+            <IconKeyboard size={14} />
             <span>Shortcuts</span>
           </button>
         </div>
@@ -97,8 +98,15 @@ export const Header: React.FC<HeaderProps> = ({ grid }) => {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '1.2rem' }}>⌨️</span>
-                <h3 style={{ fontSize: '0.95rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                <IconKeyboard size={16} className="text-emerald" />
+                <h3
+                  style={{
+                    fontSize: '0.95rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.06em',
+                  }}
+                >
                   Keyboard Shortcuts
                 </h3>
               </div>
@@ -106,16 +114,32 @@ export const Header: React.FC<HeaderProps> = ({ grid }) => {
                 type="button"
                 className="button button-sm button-ghost"
                 onClick={() => setShowShortcuts(false)}
+                style={{ padding: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
-                ✕
+                <IconClose size={15} />
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>
+              <div
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                  letterSpacing: '0.05em',
+                }}
+              >
                 Layer Switching
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', fontSize: '0.78rem' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.45rem',
+                  fontSize: '0.78rem',
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Elevation</span>
                   <kbd>1</kbd>
@@ -142,10 +166,26 @@ export const Header: React.FC<HeaderProps> = ({ grid }) => {
                 </div>
               </div>
 
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginTop: '0.5rem' }}>
-                Camera & Navigation
+              <div
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                  letterSpacing: '0.05em',
+                  marginTop: '0.5rem',
+                }}
+              >
+                Camera &amp; Navigation
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', fontSize: '0.78rem' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.45rem',
+                  fontSize: '0.78rem',
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>Top-Down (2D)</span>
                   <kbd>T</kbd>
@@ -164,10 +204,26 @@ export const Header: React.FC<HeaderProps> = ({ grid }) => {
                 </div>
               </div>
 
-              <div style={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.05em', marginTop: '0.5rem' }}>
+              <div
+                style={{
+                  fontSize: '0.7rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  color: 'var(--text-muted)',
+                  letterSpacing: '0.05em',
+                  marginTop: '0.5rem',
+                }}
+              >
                 Analysis Tools
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', fontSize: '0.78rem' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '0.45rem',
+                  fontSize: '0.78rem',
+                }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span>2D Profile Transect</span>
                   <kbd>P</kbd>

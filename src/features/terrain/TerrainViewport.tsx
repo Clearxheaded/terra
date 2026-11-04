@@ -332,6 +332,7 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
         renderStats={renderStats}
         isHiDpi={isHiDpi}
         onToggleHiDpi={onToggleHiDpi}
+        viewerRef={viewerRef}
       />
 
       {/* Loading overlay */}

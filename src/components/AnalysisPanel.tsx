@@ -9,6 +9,16 @@ import type {
 } from '@/features/analysis/types';
 import { azimuthToCompass } from '@/features/analysis/aspect';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
+import {
+  IconCompass,
+  IconDroplet,
+  IconEye,
+  IconEyeOff,
+  IconMountain,
+  IconSlope,
+  IconStream,
+  IconSun,
+} from './common/Icons';
 
 interface AnalysisPanelProps {
   grid: ElevationGrid | null;
@@ -36,6 +46,66 @@ interface AnalysisPanelProps {
   blendMode?: BlendMode;
   onBlendModeChange?: (mode: BlendMode) => void;
 }
+
+interface LayerItemDef {
+  id: AnalysisLayerType;
+  label: string;
+  sublabel: string;
+  shortcut: string;
+  icon: React.ReactNode;
+  gradientClass: string;
+}
+
+const LAYER_DEFS: LayerItemDef[] = [
+  {
+    id: 'elevation',
+    label: 'Elevation',
+    sublabel: 'Hypsometric tint',
+    shortcut: '1',
+    icon: <IconMountain size={15} />,
+    gradientClass: 'legend-bar-elevation',
+  },
+  {
+    id: 'slope',
+    label: 'Slope',
+    sublabel: "Horn's gradient",
+    shortcut: '2',
+    icon: <IconSlope size={15} />,
+    gradientClass: 'legend-bar-slope',
+  },
+  {
+    id: 'aspect',
+    label: 'Aspect',
+    sublabel: 'Compass azimuth',
+    shortcut: '3',
+    icon: <IconCompass size={15} />,
+    gradientClass: 'legend-bar-aspect',
+  },
+  {
+    id: 'hillshade',
+    label: 'Hillshade',
+    sublabel: 'Solar reflectance',
+    shortcut: '4',
+    icon: <IconSun size={15} />,
+    gradientClass: 'legend-bar-hillshade',
+  },
+  {
+    id: 'd8-flow',
+    label: 'D8 Flow',
+    sublabel: 'Steepest descent',
+    shortcut: '5',
+    icon: <IconDroplet size={15} />,
+    gradientClass: 'legend-bar-d8-flow',
+  },
+  {
+    id: 'flow-accumulation',
+    label: 'Accum',
+    sublabel: 'Drainage area',
+    shortcut: '6',
+    icon: <IconStream size={15} />,
+    gradientClass: 'legend-bar-flow-accumulation',
+  },
+];
 
 export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   grid,
@@ -67,71 +137,72 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-      {/* Layer selector tabs */}
+      {/* Kepler.gl Inspired Layer Manager Stack */}
       <div>
-        <div className="section-title">Analysis Layer</div>
-        <div className="layer-tabs" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
-          <button
-            type="button"
-            className={`layer-tab ${activeLayer === 'elevation' ? 'active' : ''}`}
-            onClick={() => onLayerChange('elevation')}
-          >
-            <span className="layer-tab-icon">⛰️</span>
-            <span className="layer-tab-label">Elevation</span>
-            <span className="layer-tab-badge">1</span>
-          </button>
-          <button
-            type="button"
-            className={`layer-tab ${activeLayer === 'slope' ? 'active' : ''}`}
-            onClick={() => onLayerChange('slope')}
-          >
-            <span className="layer-tab-icon">📐</span>
-            <span className="layer-tab-label">Slope</span>
-            <span className="layer-tab-badge">2</span>
-          </button>
-          <button
-            type="button"
-            className={`layer-tab ${activeLayer === 'aspect' ? 'active' : ''}`}
-            onClick={() => onLayerChange('aspect')}
-          >
-            <span className="layer-tab-icon">🧭</span>
-            <span className="layer-tab-label">Aspect</span>
-            <span className="layer-tab-badge">3</span>
-          </button>
-          <button
-            type="button"
-            className={`layer-tab ${activeLayer === 'hillshade' ? 'active' : ''}`}
-            onClick={() => onLayerChange('hillshade')}
-          >
-            <span className="layer-tab-icon">☀️</span>
-            <span className="layer-tab-label">Hillshade</span>
-            <span className="layer-tab-badge">4</span>
-          </button>
-          <button
-            type="button"
-            className={`layer-tab ${activeLayer === 'd8-flow' ? 'active' : ''}`}
-            onClick={() => onLayerChange('d8-flow')}
-          >
-            <span className="layer-tab-icon">💧</span>
-            <span className="layer-tab-label">D8 Flow</span>
-            <span className="layer-tab-badge">5</span>
-          </button>
-          <button
-            type="button"
-            className={`layer-tab ${activeLayer === 'flow-accumulation' ? 'active' : ''}`}
-            onClick={() => onLayerChange('flow-accumulation')}
-          >
-            <span className="layer-tab-icon">🌊</span>
-            <span className="layer-tab-label">Accum</span>
-            <span className="layer-tab-badge">6</span>
-          </button>
+        <div className="section-title">
+          <span>Surface Layer Stack</span>
+          <span style={{ fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-muted)' }}>
+            Keys 1–6
+          </span>
+        </div>
+
+        <div className="kepler-layer-stack">
+          {LAYER_DEFS.map((layer) => {
+            const isActive = activeLayer === layer.id;
+            return (
+              <div
+                key={layer.id}
+                className={`kepler-layer-row ${isActive ? 'active' : ''}`}
+                onClick={() => onLayerChange(layer.id)}
+              >
+                {/* Visibility Toggle Button */}
+                <button
+                  type="button"
+                  className="layer-visibility-toggle"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLayerChange(layer.id);
+                  }}
+                  title={isActive ? 'Active layer' : `Switch to ${layer.label}`}
+                >
+                  {isActive ? (
+                    <IconEye size={15} className="text-emerald" />
+                  ) : (
+                    <IconEyeOff size={15} className="text-muted" />
+                  )}
+                </button>
+
+                {/* Layer tab button for test compatibility and clean semantics */}
+                <button
+                  type="button"
+                  className={`layer-tab ${isActive ? 'active' : ''}`}
+                  onClick={() => onLayerChange(layer.id)}
+                >
+                  <span className="layer-tab-chip">
+                    <span className={`layer-ramp-swatch ${layer.gradientClass}`} />
+                  </span>
+                  <span className="layer-tab-icon">{layer.icon}</span>
+                  <div className="layer-tab-info">
+                    <span className="layer-tab-label">{layer.label}</span>
+                    <span className="layer-tab-sublabel">{layer.sublabel}</span>
+                  </div>
+                  <span className="layer-tab-badge">{layer.shortcut}</span>
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
 
       {/* Dynamic Layer Color Ramp Legend */}
       <div className="legend-card">
         <div className="legend-header">
-          <span>{activeLayer.replace('-', ' ')} Color Ramp</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
+              {activeLayer.replace('-', ' ')}
+            </span>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Legend</span>
+          </div>
           {activeLayer === 'slope' && (
             <span className="control-value">{slopeUnit}</span>
           )}
@@ -213,7 +284,7 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
         )}
       </div>
 
-      {/* Layer-Specific Controls */}
+      {/* Layer-Specific Parameter Controls */}
       {activeLayer === 'slope' && (
         <div className="control-group">
           <div className="control-label">
@@ -236,9 +307,30 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
           </div>
           {slopeResult && (
-            <div style={{ marginTop: '0.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-              <div>Mean: <strong className="monospace" style={{ color: 'var(--text-primary)' }}>{slopeResult.mean.toFixed(1)}{slopeUnit === 'degrees' ? '°' : '%'}</strong></div>
-              <div>Max: <strong className="monospace" style={{ color: 'var(--text-primary)' }}>{slopeResult.max.toFixed(1)}{slopeUnit === 'degrees' ? '°' : '%'}</strong></div>
+            <div
+              style={{
+                marginTop: '0.5rem',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.35rem',
+                fontSize: '0.74rem',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <div>
+                Mean:{' '}
+                <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+                  {slopeResult.mean.toFixed(1)}
+                  {slopeUnit === 'degrees' ? '°' : '%'}
+                </strong>
+              </div>
+              <div>
+                Max:{' '}
+                <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+                  {slopeResult.max.toFixed(1)}
+                  {slopeUnit === 'degrees' ? '°' : '%'}
+                </strong>
+              </div>
             </div>
           )}
         </div>
@@ -247,9 +339,27 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
       {activeLayer === 'aspect' && aspectResult && (
         <div className="control-group">
           <div className="section-title">Aspect Surface Summary</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-            <div>Flat cells: <strong className="monospace" style={{ color: 'var(--text-primary)' }}>{aspectResult.flatCount.toLocaleString()}</strong></div>
-            <div>Valid slopes: <strong className="monospace" style={{ color: 'var(--text-primary)' }}>{(aspectResult.data.length - aspectResult.flatCount).toLocaleString()}</strong></div>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '0.35rem',
+              fontSize: '0.74rem',
+              color: 'var(--text-muted)',
+            }}
+          >
+            <div>
+              Flat cells:{' '}
+              <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+                {aspectResult.flatCount.toLocaleString()}
+              </strong>
+            </div>
+            <div>
+              Valid slopes:{' '}
+              <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+                {(aspectResult.data.length - aspectResult.flatCount).toLocaleString()}
+              </strong>
+            </div>
           </div>
         </div>
       )}
@@ -259,7 +369,9 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           <div className="control-group">
             <div className="control-label">
               <span>Sun Azimuth</span>
-              <span className="control-value">{sunAzimuth}° ({compassDirection})</span>
+              <span className="control-value">
+                {sunAzimuth}° ({compassDirection})
+              </span>
             </div>
             <div className="slider-container">
               <input
@@ -293,15 +405,33 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           </div>
 
           {hillshadeResult && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
-              <div>Min Shade: <strong className="monospace" style={{ color: 'var(--text-primary)' }}>{hillshadeResult.min}</strong></div>
-              <div>Max Shade: <strong className="monospace" style={{ color: 'var(--text-primary)' }}>{hillshadeResult.max}</strong></div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: '0.35rem',
+                fontSize: '0.74rem',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <div>
+                Min Shade:{' '}
+                <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+                  {hillshadeResult.min}
+                </strong>
+              </div>
+              <div>
+                Max Shade:{' '}
+                <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+                  {hillshadeResult.max}
+                </strong>
+              </div>
             </div>
           )}
         </div>
       )}
 
-      {/* Multi-Layer Blending Section */}
+      {/* Kepler.gl Multi-Layer Blending Stack */}
       {onToggleBlending && (
         <div className="inspection-card" style={{ marginTop: '0.2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -325,7 +455,14 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           </div>
 
           {isBlendingEnabled && (
-            <div style={{ marginTop: '0.65rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            <div
+              style={{
+                marginTop: '0.65rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.45rem',
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Base Layer:</span>
                 <select
@@ -334,8 +471,8 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   className="dropdown-select"
                   style={{ width: '135px' }}
                 >
-                  <option value="elevation">⛰️ Elevation</option>
-                  <option value="hillshade">☀️ Hillshade</option>
+                  <option value="elevation">Elevation</option>
+                  <option value="hillshade">Hillshade</option>
                 </select>
               </div>
 
@@ -348,11 +485,11 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   style={{ width: '135px' }}
                 >
                   <option value="none">None</option>
-                  <option value="slope">📐 Slope</option>
-                  <option value="aspect">🧭 Aspect</option>
-                  <option value="hillshade">☀️ Hillshade</option>
-                  <option value="d8-flow">💧 D8 Flow</option>
-                  <option value="flow-accumulation">🌊 Accumulation</option>
+                  <option value="slope">Slope</option>
+                  <option value="aspect">Aspect</option>
+                  <option value="hillshade">Hillshade</option>
+                  <option value="d8-flow">D8 Flow</option>
+                  <option value="flow-accumulation">Accumulation</option>
                 </select>
               </div>
 

@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import type { ProfilePoint, ProfileResult } from '@/features/analysis/profile';
+import { IconChartLine, IconClose } from './common/Icons';
 
 interface ProfileViewerProps {
   profile: ProfileResult | null;
@@ -121,7 +122,7 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
     <div className="profile-viewer-panel">
       <div className="profile-viewer-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <span style={{ fontSize: '1rem' }}>📈</span>
+          <IconChartLine size={16} className="text-emerald" />
           <span style={{ fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
             Elevation Cross-Section Transect
           </span>
@@ -142,8 +143,9 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
             className="button button-sm button-ghost"
             onClick={onClose}
             title="Close elevation profile drawer (Esc)"
+            style={{ padding: '0.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           >
-            ✕
+            <IconClose size={14} />
           </button>
         </div>
       </div>

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import type { WebGLRenderStats } from '@/features/terrain/terrain-viewer';
+import type { WebGLRenderStats, TerrainViewer } from '@/features/terrain/terrain-viewer';
+import { CompassWidget } from './CompassWidget';
+import { IconCrosshair, IconSparkles, IconTarget, IconZap } from './common/Icons';
 
 export interface TerrainHoverData {
   col: number;
@@ -23,6 +25,7 @@ interface TerrainHUDProps {
   renderStats?: WebGLRenderStats | null;
   isHiDpi?: boolean;
   onToggleHiDpi?: () => void;
+  viewerRef?: React.RefObject<TerrainViewer | null>;
 }
 
 export const TerrainHUD: React.FC<TerrainHUDProps> = ({
@@ -32,15 +35,22 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
   renderStats,
   isHiDpi,
   onToggleHiDpi,
+  viewerRef,
 }) => {
   const [showNavGuide, setShowNavGuide] = useState(false);
 
   return (
     <>
-      {/* 1. Top-Right: Camera Presets & HiDPI Quality Toolbar */}
+      {/* 1. Top-Right: Camera Presets & HiDPI Quality Toolbar + Compass Gizmo */}
       {onSetCameraPreset && (
         <div className="hud-dock-top-right">
           <div className="camera-presets-bar">
+            {/* Viewport Compass Widget */}
+            <CompassWidget
+              viewerRef={viewerRef}
+              onAlignNorth={() => onSetCameraPreset('top-down')}
+            />
+
             <span className="camera-presets-label">Camera</span>
             <button
               type="button"
@@ -84,8 +94,19 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
                     ? 'Active: HiDPI / Retina Sharpness. Click to switch to 1× Performance Mode'
                     : 'Active: 1× Performance Mode. Click to switch to HiDPI Retina Sharpness'
                 }
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
               >
-                {isHiDpi ? '✨ HiDPI' : '⚡ 1×'}
+                {isHiDpi ? (
+                  <>
+                    <IconSparkles size={12} className="text-emerald" />
+                    <span>HiDPI</span>
+                  </>
+                ) : (
+                  <>
+                    <IconZap size={12} />
+                    <span>1×</span>
+                  </>
+                )}
               </button>
             )}
           </div>
@@ -101,8 +122,10 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
               className={`hud-fps-badge ${
                 renderStats.fps >= 50 ? '' : renderStats.fps >= 30 ? 'warning' : 'danger'
               }`}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
             >
-              ⚡ {renderStats.fps} FPS
+              <IconZap size={11} />
+              <span>{renderStats.fps} FPS</span>
             </span>
             <span className="monospace">{renderStats.frameTimeMs} ms</span>
             <span className="monospace">{renderStats.triangles.toLocaleString()} tris</span>
@@ -187,10 +210,21 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
       {/* 3. Center-Top: Transect Mode Notice */}
       {(activeMode === 'transect-a' || activeMode === 'transect-b') && (
         <div className="hud-dock-top-center">
-          <div className="hud-mode-pill transect-mode">
-            {activeMode === 'transect-a'
-              ? '📍 Click 1st point on terrain to set Point A'
-              : '🎯 Click 2nd point on terrain to complete profile cut (Point B)'}
+          <div
+            className="hud-mode-pill transect-mode"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}
+          >
+            {activeMode === 'transect-a' ? (
+              <>
+                <IconCrosshair size={14} className="text-emerald" />
+                <span>Click 1st point on terrain to set Point A</span>
+              </>
+            ) : (
+              <>
+                <IconTarget size={14} className="text-sky" />
+                <span>Click 2nd point on terrain to complete profile cut (Point B)</span>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -223,7 +257,13 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
           </div>
 
           {showNavGuide && (
-            <div style={{ marginTop: '0.4rem', borderTop: '1px solid var(--border-subtle)', paddingTop: '0.35rem' }}>
+            <div
+              style={{
+                marginTop: '0.4rem',
+                borderTop: '1px solid var(--border-subtle)',
+                paddingTop: '0.35rem',
+              }}
+            >
               <div className="viewport-hud-row">
                 <span>Layers:</span>
                 <span><kbd>1</kbd>–<kbd>6</kbd></span>
@@ -243,12 +283,33 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
             </div>
           )}
 
-          <div style={{ marginTop: '0.35rem', color: 'var(--accent-primary)', fontSize: '0.7rem', fontWeight: 600 }}>
-            {activeMode === 'transect-a'
-              ? '📍 Click terrain to set Point A'
-              : activeMode === 'transect-b'
-                ? '🎯 Click terrain to set Point B'
-                : '🎯 Click surface to delineate watershed'}
+          <div
+            style={{
+              marginTop: '0.35rem',
+              color: 'var(--accent-primary)',
+              fontSize: '0.7rem',
+              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+            }}
+          >
+            {activeMode === 'transect-a' ? (
+              <>
+                <IconCrosshair size={12} />
+                <span>Click terrain to set Point A</span>
+              </>
+            ) : activeMode === 'transect-b' ? (
+              <>
+                <IconTarget size={12} />
+                <span>Click terrain to set Point B</span>
+              </>
+            ) : (
+              <>
+                <IconTarget size={12} />
+                <span>Click surface to delineate watershed</span>
+              </>
+            )}
           </div>
         </div>
       </div>
