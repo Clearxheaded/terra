@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DragDropOverlay } from '@/components/DragDropOverlay';
 import { Header } from '@/components/Header';
 import { ProfileViewer } from '@/components/ProfileViewer';
 import { Sidebar } from '@/components/Sidebar';
@@ -75,6 +76,15 @@ export const App: React.FC = () => {
   const [transectEnd, setTransectEnd] = useState<{ col: number; row: number; elevation: number } | null>(null);
   const [hoveredProfilePoint, setHoveredProfilePoint] = useState<ProfilePoint | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Viewport quality & drag-drop states
+  const [isHiDpi, setIsHiDpi] = useState(true);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  const handleToggleHiDpi = useCallback(() => {
+    setIsHiDpi((prev) => !prev);
+  }, []);
 
   // Analysis computations (memoized per grid / settings)
   const slopeResult = useMemo(() => {
@@ -354,8 +364,74 @@ export const App: React.FC = () => {
     handleLoadSynthetic('mountain');
   }, [handleLoadSynthetic]);
 
+  // Full-viewport drag-and-drop file listener
+  useEffect(() => {
+    const handleWindowDragEnter = (e: DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+        e.preventDefault();
+        dragCounterRef.current++;
+        setIsDraggingFile(true);
+      }
+    };
+
+    const handleWindowDragOver = (e: DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+      }
+    };
+
+    const handleWindowDragLeave = (e: DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+        dragCounterRef.current--;
+        if (dragCounterRef.current <= 0) {
+          dragCounterRef.current = 0;
+          setIsDraggingFile(false);
+        }
+      }
+    };
+
+    const handleWindowDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounterRef.current = 0;
+      setIsDraggingFile(false);
+
+      if (e.dataTransfer?.files && e.dataTransfer.files.length > 0) {
+        const file = e.dataTransfer.files[0]!;
+        const ext = file.name.toLowerCase();
+        if (
+          ext.endsWith('.tif') ||
+          ext.endsWith('.tiff') ||
+          ext.endsWith('.geotiff') ||
+          file.type === 'image/tiff'
+        ) {
+          handleFileUpload(file);
+        } else {
+          setErrorMessage(
+            `Unsupported file "${file.name}". Please upload a GeoTIFF elevation raster (.tif or .tiff).`
+          );
+        }
+      }
+    };
+
+    window.addEventListener('dragenter', handleWindowDragEnter);
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('dragleave', handleWindowDragLeave);
+    window.addEventListener('drop', handleWindowDrop);
+
+    return () => {
+      window.removeEventListener('dragenter', handleWindowDragEnter);
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('dragleave', handleWindowDragLeave);
+      window.removeEventListener('drop', handleWindowDrop);
+    };
+  }, [handleFileUpload]);
+
   return (
     <div className="app-container">
+      {/* Full-Viewport Drag & Drop Overlay */}
+      <DragDropOverlay isDragging={isDraggingFile} />
+
       <Header grid={grid} />
 
       <div className="app-body">
@@ -448,6 +524,8 @@ export const App: React.FC = () => {
             aspectResult={aspectResult}
             viewerRefOut={viewerRef}
             onSetCameraPreset={handleSetCameraPreset}
+            isHiDpi={isHiDpi}
+            onToggleHiDpi={handleToggleHiDpi}
           />
 
           {/* Interactive Profile Drawer */}

@@ -19,6 +19,7 @@ import {
 export interface TerrainViewerOptions {
   container: HTMLElement;
   initialExaggeration?: number;
+  initialHiDpi?: boolean;
 }
 
 export interface WebGLRenderStats {
@@ -30,6 +31,15 @@ export interface WebGLRenderStats {
   geometriesCount: number;
   texturesCount: number;
   lodStride: number;
+}
+
+interface CameraTransition {
+  startPos: THREE.Vector3;
+  endPos: THREE.Vector3;
+  startTarget: THREE.Vector3;
+  endTarget: THREE.Vector3;
+  startTime: number;
+  durationMs: number;
 }
 
 export class TerrainViewer {
@@ -64,6 +74,8 @@ export class TerrainViewer {
 
   private verticalExaggeration = 1.0;
   private wireframe = false;
+  private isHiDpi = true;
+  private cameraTransition: CameraTransition | null = null;
 
   // Real-time WebGL performance metrics
   private lastStatsTimestamp = performance.now();
@@ -76,6 +88,7 @@ export class TerrainViewer {
   constructor(options: TerrainViewerOptions) {
     this.container = options.container;
     this.verticalExaggeration = options.initialExaggeration ?? 1.5;
+    this.isHiDpi = options.initialHiDpi ?? true;
 
     // Scene setup
     this.scene = new THREE.Scene();
@@ -91,7 +104,8 @@ export class TerrainViewer {
       antialias: true,
       powerPreference: 'high-performance',
     });
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    const pixelRatio = this.isHiDpi ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+    this.renderer.setPixelRatio(pixelRatio);
     this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.1;
@@ -104,6 +118,9 @@ export class TerrainViewer {
     this.controls.maxPolarAngle = Math.PI / 2 - 0.02; // Prevent going beneath ground plane
     this.controls.minDistance = 5;
     this.controls.maxDistance = 2000;
+    this.controls.addEventListener('start', () => {
+      this.cameraTransition = null;
+    });
 
     // Lighting
     this.setupLighting();
@@ -189,7 +206,7 @@ export class TerrainViewer {
     this.currentMesh.scale.set(1, this.verticalExaggeration, 1);
 
     this.scene.add(this.currentMesh);
-    this.resetCamera();
+    this.refocusCamera({ smooth: true });
   }
 
   /**
@@ -466,20 +483,42 @@ export class TerrainViewer {
    * - 'default': Standard 3D perspective inspection angle
    */
   setCameraPreset(preset: 'top-down' | 'isometric' | 'oblique' | 'default'): void {
-    if (preset === 'top-down') {
-      this.controls.target.set(0, 0, 0);
-      this.camera.position.set(0, 150, 0.001); // 0.001 z-offset avoids gimbal singularity
-    } else if (preset === 'isometric') {
-      this.controls.target.set(0, 5, 0);
-      this.camera.position.set(85, 85, 85);
-    } else if (preset === 'oblique') {
-      this.controls.target.set(0, 10, 0);
-      this.camera.position.set(0, 18, 120);
-    } else {
-      this.resetCamera();
+    if (preset === 'default') {
+      this.refocusCamera({ smooth: true });
       return;
     }
-    this.controls.update();
+
+    let center = new THREE.Vector3(0, 5, 0);
+    let radius = 60;
+    if (this.currentMesh) {
+      const box = new THREE.Box3().setFromObject(this.currentMesh);
+      if (!box.isEmpty()) {
+        center = box.getCenter(new THREE.Vector3());
+        radius = Math.max(box.getBoundingSphere(new THREE.Sphere()).radius, 10);
+      }
+    }
+
+    let endTarget = center.clone();
+    let endPos = this.camera.position.clone();
+
+    if (preset === 'top-down') {
+      endTarget = new THREE.Vector3(center.x, 0, center.z);
+      endPos = new THREE.Vector3(center.x, center.y + radius * 2.3, center.z + 0.001);
+    } else if (preset === 'isometric') {
+      const dist = radius * 1.45;
+      endPos = new THREE.Vector3(center.x + dist * 0.7, center.y + dist * 0.7, center.z + dist * 0.7);
+    } else if (preset === 'oblique') {
+      endPos = new THREE.Vector3(center.x, center.y + radius * 0.28, center.z + radius * 1.6);
+    }
+
+    this.cameraTransition = {
+      startPos: this.camera.position.clone(),
+      endPos,
+      startTarget: this.controls.target.clone(),
+      endTarget,
+      startTime: performance.now(),
+      durationMs: 500,
+    };
   }
 
   getDomCanvas(): HTMLCanvasElement {
@@ -568,12 +607,74 @@ export class TerrainViewer {
   }
 
   /**
-   * Centers and repositions the camera for optimal terrain inspection.
+   * Centers and repositions the camera for optimal terrain inspection,
+   * dynamically framing the current mesh extent.
    */
   resetCamera(): void {
-    this.controls.target.set(0, 10, 0);
-    this.camera.position.set(0, 85, 115);
-    this.controls.update();
+    this.refocusCamera({ smooth: true });
+  }
+
+  /**
+   * Automatically calculates the terrain's bounding sphere and smoothly
+   * re-centers the OrbitControls camera target so the terrain is framed.
+   */
+  refocusCamera(options: { smooth?: boolean; durationMs?: number } = {}): void {
+    const { smooth = true, durationMs = 600 } = options;
+
+    let center = new THREE.Vector3(0, 10, 0);
+    let radius = 60;
+
+    if (this.currentMesh) {
+      const box = new THREE.Box3().setFromObject(this.currentMesh);
+      if (!box.isEmpty()) {
+        center = box.getCenter(new THREE.Vector3());
+        const sphere = box.getBoundingSphere(new THREE.Sphere());
+        radius = Math.max(sphere.radius, 10);
+      }
+    }
+
+    const fovRad = (this.camera.fov * Math.PI) / 180;
+    const aspect = Math.max(this.camera.aspect, 0.1);
+    const hFovRad = 2 * Math.atan(Math.tan(fovRad / 2) * aspect);
+    const minFov = Math.min(fovRad, hFovRad);
+    const distance = (radius / Math.sin(minFov / 2)) * 1.15;
+
+    const endTarget = center.clone();
+    const endPos = new THREE.Vector3(
+      center.x,
+      center.y + distance * 0.62,
+      center.z + distance * 0.82
+    );
+
+    if (smooth) {
+      this.cameraTransition = {
+        startPos: this.camera.position.clone(),
+        endPos,
+        startTarget: this.controls.target.clone(),
+        endTarget,
+        startTime: performance.now(),
+        durationMs,
+      };
+    } else {
+      this.cameraTransition = null;
+      this.camera.position.copy(endPos);
+      this.controls.target.copy(endTarget);
+      this.controls.update();
+    }
+  }
+
+  /**
+   * Toggles viewport pixel ratio between 1x (performance) and native device pixel ratio (HiDPI).
+   */
+  setHiDpi(enabled: boolean): void {
+    this.isHiDpi = enabled;
+    const ratio = enabled ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+    this.renderer.setPixelRatio(ratio);
+    this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+  }
+
+  getHiDpi(): boolean {
+    return this.isHiDpi;
   }
 
   private clearCurrentMesh(): void {
@@ -652,6 +753,19 @@ export class TerrainViewer {
 
       if (this.onStatsUpdate) {
         this.onStatsUpdate(this.getRenderStats());
+      }
+    }
+
+    // Smooth camera transition animation
+    if (this.cameraTransition) {
+      const elapsed = now - this.cameraTransition.startTime;
+      const t = Math.min(1, elapsed / this.cameraTransition.durationMs);
+      // Cubic ease-in-out
+      const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+      this.camera.position.lerpVectors(this.cameraTransition.startPos, this.cameraTransition.endPos, ease);
+      this.controls.target.lerpVectors(this.cameraTransition.startTarget, this.cameraTransition.endTarget, ease);
+      if (t >= 1) {
+        this.cameraTransition = null;
       }
     }
 

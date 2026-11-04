@@ -134,4 +134,57 @@ test.describe('Terra Geospatial Application', () => {
     await expect(page.getByRole('button', { name: /Export Active Layer \(GeoTIFF\)/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Capture Viewport \(PNG\)/i })).toBeVisible();
   });
+
+  test('verifies social metadata, HiDPI viewport quality toggle, and drag-and-drop dropzone', async ({ page }) => {
+    // Social metadata verification in DOM head
+    const ogTitle = page.locator('meta[property="og:title"]');
+    await expect(ogTitle).toHaveAttribute('content', /Terra — 3D Terrain & Geospatial Analysis/);
+
+    const twitterCard = page.locator('meta[name="twitter:card"]');
+    await expect(twitterCard).toHaveAttribute('content', 'summary_large_image');
+
+    const favicon = page.locator('link[type="image/svg+xml"]');
+    await expect(favicon).toHaveAttribute('href', /favicon\.svg/);
+
+    // HiDPI quality toggle in viewport HUD
+    const hidpiBtn = page.getByRole('button', { name: /HiDPI|1×/i });
+    await expect(hidpiBtn).toBeVisible();
+    await expect(hidpiBtn).toContainText('HiDPI');
+
+    // Click to switch to 1x performance mode
+    await hidpiBtn.click();
+    await expect(hidpiBtn).toContainText('1×');
+
+    // Click again to switch back to HiDPI mode
+    await hidpiBtn.click();
+    await expect(hidpiBtn).toContainText('HiDPI');
+
+    // Drag-and-drop file overlay trigger
+    await page.evaluate(() => {
+      const event = new DragEvent('dragenter', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: new DataTransfer(),
+      });
+      event.dataTransfer?.items.add(new File(['test'], 'elevation.tif', { type: 'image/tiff' }));
+      window.dispatchEvent(event);
+    });
+
+    const overlay = page.getByRole('region', { name: 'File dropzone' });
+    await expect(overlay).toBeVisible();
+    await expect(overlay).toContainText('Drop GeoTIFF Elevation Model Here');
+
+    // Leave window drag
+    await page.evaluate(() => {
+      const event = new DragEvent('dragleave', {
+        bubbles: true,
+        cancelable: true,
+        dataTransfer: new DataTransfer(),
+      });
+      event.dataTransfer?.items.add(new File(['test'], 'elevation.tif', { type: 'image/tiff' }));
+      window.dispatchEvent(event);
+    });
+
+    await expect(overlay).not.toBeVisible();
+  });
 });

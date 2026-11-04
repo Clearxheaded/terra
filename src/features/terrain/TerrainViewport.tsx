@@ -45,6 +45,8 @@ export interface TerrainViewportProps {
   aspectResult?: AspectResult | null;
   viewerRefOut?: React.MutableRefObject<TerrainViewer | null>;
   onSetCameraPreset?: (preset: 'top-down' | 'isometric' | 'oblique' | 'default') => void;
+  isHiDpi?: boolean;
+  onToggleHiDpi?: () => void;
 }
 
 export const TerrainViewport: React.FC<TerrainViewportProps> = ({
@@ -78,6 +80,8 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
   aspectResult = null,
   viewerRefOut,
   onSetCameraPreset,
+  isHiDpi = true,
+  onToggleHiDpi,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewerRef = useRef<TerrainViewer | null>(null);
@@ -93,6 +97,7 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
     const viewer = new TerrainViewer({
       container: containerRef.current,
       initialExaggeration: verticalExaggeration,
+      initialHiDpi: isHiDpi,
     });
     viewer.setOnStatsUpdate((stats) => {
       setRenderStats(stats);
@@ -184,6 +189,12 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
     if (!viewerRef.current) return;
     viewerRef.current.setVerticalExaggeration(verticalExaggeration);
   }, [verticalExaggeration]);
+
+  // Update HiDPI resolution mode
+  useEffect(() => {
+    if (!viewerRef.current || isHiDpi === undefined) return;
+    viewerRef.current.setHiDpi(isHiDpi);
+  }, [isHiDpi]);
 
   // Update wireframe mode
   useEffect(() => {
@@ -319,6 +330,8 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
         activeMode={activeMode}
         onSetCameraPreset={onSetCameraPreset}
         renderStats={renderStats}
+        isHiDpi={isHiDpi}
+        onToggleHiDpi={onToggleHiDpi}
       />
 
       {/* Navigation & Controls Hints */}

@@ -21,6 +21,8 @@ interface TerrainHUDProps {
   activeMode?: 'inspect' | 'transect-a' | 'transect-b';
   onSetCameraPreset?: (preset: 'top-down' | 'isometric' | 'oblique' | 'default') => void;
   renderStats?: WebGLRenderStats | null;
+  isHiDpi?: boolean;
+  onToggleHiDpi?: () => void;
 }
 
 export const TerrainHUD: React.FC<TerrainHUDProps> = ({
@@ -28,6 +30,8 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
   activeMode,
   onSetCameraPreset,
   renderStats,
+  isHiDpi,
+  onToggleHiDpi,
 }) => {
   return (
     <div className="terrain-hud-container">
@@ -67,6 +71,20 @@ export const TerrainHUD: React.FC<TerrainHUDProps> = ({
           >
             🔄 Reset
           </button>
+          {onToggleHiDpi !== undefined && (
+            <button
+              type="button"
+              className={`camera-preset-btn ${isHiDpi ? 'retina-active' : ''}`}
+              onClick={onToggleHiDpi}
+              title={
+                isHiDpi
+                  ? 'Active: Native HiDPI / Retina Resolution. Click for 1× Performance Mode'
+                  : 'Active: 1× Performance Resolution. Click for Native HiDPI / Retina Sharpness'
+              }
+            >
+              {isHiDpi ? '✨ HiDPI' : '⚡ 1×'}
+            </button>
+          )}
         </div>
       )}
 
