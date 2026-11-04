@@ -22,3 +22,8 @@ Thumbs.db
 # Vitest / Test coverage
 coverage/
 
+# Playwright
+test-results/
+playwright-report/
+
+

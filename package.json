@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "bench": "vitest run tests/benchmarks.test.ts",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "geotiff": "^2.1.3",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
+    "@playwright/test": "^1.64.1",
     "@types/node": "^22.13.9",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
@@ -32,4 +34,3 @@
     "vitest": "^3.0.7"
   }
 }
-

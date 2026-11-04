@@ -235,31 +235,37 @@ export const App: React.FC = () => {
     }
   }, []);
 
-  const handleLoadSampleFile = useCallback(async () => {
-    setIsLoading(true);
-    setErrorMessage(null);
-    setSelectedPourPoint(null);
-    setTransectStart(null);
-    setTransectEnd(null);
-    setActiveMode('inspect');
-    setIsProfileOpen(false);
-    try {
-      const response = await fetch('/samples/sample_dem.tif');
-      if (!response.ok) {
-        throw new Error(`Failed to load sample dataset: ${response.statusText}`);
+  const handleLoadSampleFile = useCallback(
+    async (
+      sampleUrl = '/samples/mount_st_helens.tif',
+      datasetTitle = 'Mount St. Helens (USGS 3DEP 30m)'
+    ) => {
+      setIsLoading(true);
+      setErrorMessage(null);
+      setSelectedPourPoint(null);
+      setTransectStart(null);
+      setTransectEnd(null);
+      setActiveMode('inspect');
+      setIsProfileOpen(false);
+      try {
+        const response = await fetch(sampleUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to load sample dataset: ${response.statusText}`);
+        }
+        const buffer = await response.arrayBuffer();
+        const result = await parseGeoTIFF(buffer, datasetTitle);
+        const safety = checkRasterSafety(result.grid.width, result.grid.height);
+        setGrid(result.grid);
+        setWarnings([...result.warnings, ...safety.warnings]);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to load sample file.';
+        setErrorMessage(message);
+      } finally {
+        setIsLoading(false);
       }
-      const buffer = await response.arrayBuffer();
-      const result = await parseGeoTIFF(buffer, 'Sample Volcanic Peak (30m UTM)');
-      const safety = checkRasterSafety(result.grid.width, result.grid.height);
-      setGrid(result.grid);
-      setWarnings([...result.warnings, ...safety.warnings]);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load sample file.';
-      setErrorMessage(message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const handleLoadSynthetic = useCallback((type: SyntheticTerrainOptions['type']) => {
     setErrorMessage(null);

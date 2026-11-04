@@ -77,7 +77,7 @@ interface SidebarProps {
   onClearInspection: () => void;
   onFileUpload: (file: File) => void;
   onLoadSynthetic: (type: SyntheticTerrainOptions['type']) => void;
-  onLoadSampleFile: () => void;
+  onLoadSampleFile: (url?: string, title?: string) => void;
   onResetCamera: () => void;
   isLoading: boolean;
 }
@@ -172,16 +172,61 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <div className="upload-dropzone-text">Select GeoTIFF File</div>
           <div className="upload-dropzone-hint">.tif, .tiff local DEM files (client-side)</div>
         </div>
+      </section>
 
-        <div style={{ marginTop: '0.85rem' }}>
+      {/* Open Sample DEM Datasets */}
+      <section className="sidebar-section">
+        <h2 className="section-title">Open Sample DEMs</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
           <button
             type="button"
             className="button"
-            style={{ width: '100%', marginBottom: '0.5rem' }}
-            onClick={onLoadSampleFile}
+            style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '0.45rem 0.65rem' }}
+            onClick={() =>
+              onLoadSampleFile('/samples/mount_st_helens.tif', 'Mount St. Helens (USGS 3DEP 30m)')
+            }
             disabled={isLoading}
+            data-testid="sample-mount-st-helens"
           >
-            Load Sample GeoTIFF (30m)
+            <span style={{ fontSize: '1.2rem', marginRight: '0.35rem' }}>🌋</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>Mount St. Helens</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>USGS 3DEP &bull; 30m UTM &bull; 128&times;128</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="button"
+            style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '0.45rem 0.65rem' }}
+            onClick={() =>
+              onLoadSampleFile('/samples/drainage_basin.tif', 'Eagle Creek Basin (30m UTM)')
+            }
+            disabled={isLoading}
+            data-testid="sample-drainage-basin"
+          >
+            <span style={{ fontSize: '1.2rem', marginRight: '0.35rem' }}>🌊</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>Eagle Creek Basin</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Copernicus DEM &bull; Sinks &bull; 128&times;128</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            className="button"
+            style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'left', padding: '0.45rem 0.65rem' }}
+            onClick={() =>
+              onLoadSampleFile('/samples/sample_dem.tif', 'Sample Volcanic Peak (30m UTM)')
+            }
+            disabled={isLoading}
+            data-testid="sample-volcanic-peak"
+          >
+            <span style={{ fontSize: '1.2rem', marginRight: '0.35rem' }}>⛰️</span>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: '0.82rem' }}>Volcanic Peak (Light)</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Foundational &bull; 35&times;35 Grid</div>
+            </div>
           </button>
         </div>
       </section>

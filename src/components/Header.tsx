@@ -12,7 +12,7 @@ export const Header: React.FC<HeaderProps> = ({ grid }) => {
     <header className="app-header">
       <div className="brand-section">
         <h1 className="brand-title">TERRA</h1>
-        <span className="brand-tag">v0.1.0 • M1</span>
+        <span className="brand-tag">v0.1.0 • Release</span>
       </div>
 
       <div className="header-meta">
