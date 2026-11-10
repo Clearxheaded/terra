@@ -620,3 +620,62 @@ export const IconChartLine: React.FC<IconProps> = ({ size = defaultProps.size, c
     <path d="m19 9-5 5-4-4-3 3" />
   </svg>
 );
+
+export const IconTerraMark: React.FC<IconProps> = ({ size = 18, className, style }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    style={style}
+  >
+    <path d="M3 19c2.5-6 5.2-11 9-11s6.5 5 9 11" />
+    <path d="M6.5 19c1.8-3.6 3.5-6.2 5.5-6.2s3.7 2.6 5.5 6.2" opacity="0.65" />
+    <line x1="2" y1="19" x2="22" y2="19" />
+  </svg>
+);
+
+export const IconGrid: React.FC<IconProps> = ({ size = defaultProps.size, className, style }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={defaultProps.strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    style={style}
+  >
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <line x1="3" y1="9" x2="21" y2="9" />
+    <line x1="3" y1="15" x2="21" y2="15" />
+    <line x1="9" y1="3" x2="9" y2="21" />
+    <line x1="15" y1="3" x2="15" y2="21" />
+  </svg>
+);
+
+export const IconHelpCircle: React.FC<IconProps> = ({ size = defaultProps.size, className, style }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={defaultProps.strokeWidth}
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={className}
+    style={style}
+  >
+    <circle cx="12" cy="12" r="10" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <line x1="12" y1="17" x2="12.01" y2="17" />
+  </svg>
+);

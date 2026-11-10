@@ -121,12 +121,14 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
   return (
     <div className="profile-viewer-panel">
       <div className="profile-viewer-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <IconChartLine size={16} className="text-emerald" />
-          <span style={{ fontWeight: 700, fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            Elevation Cross-Section Transect
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+          <IconChartLine size={15} className="text-accent" />
+          <span style={{ fontWeight: 600, fontSize: '0.82rem' }}>
+            Elevation Cross-Section
           </span>
-          <span className="badge badge-primary">{points.length} samples</span>
+          <span className="monospace text-muted" style={{ fontSize: '0.72rem' }}>
+            {points.length} samples
+          </span>
         </div>
 
         <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
@@ -195,8 +197,8 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
         >
           <defs>
             <linearGradient id="profileAreaGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#10b981" stopOpacity="0.02" />
+              <stop offset="0%" stopColor="#2fb389" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="#2fb389" stopOpacity="0.01" />
             </linearGradient>
           </defs>
 
@@ -264,7 +266,7 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
           <path
             d={pathD}
             fill="none"
-            stroke="#10b981"
+            stroke="#2fb389"
             strokeWidth="2"
             strokeLinejoin="round"
             strokeLinecap="round"
@@ -279,17 +281,17 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
                 y1={padding.top}
                 x2={getX(currentPt.distanceHorizontal)}
                 y2={padding.top + plotHeight}
-                stroke="#38bdf8"
-                strokeWidth="1.5"
+                stroke="#e5a93c"
+                strokeWidth="1.25"
                 strokeDasharray="3 2"
               />
               {/* Highlight dot on curve */}
               <circle
                 cx={getX(currentPt.distanceHorizontal)}
                 cy={getY(currentPt.elevation)}
-                r="4.5"
-                fill="#38bdf8"
-                stroke="#090d16"
+                r="4"
+                fill="#e5a93c"
+                stroke="#141518"
                 strokeWidth="2"
               />
 
@@ -306,8 +308,8 @@ export const ProfileViewer: React.FC<ProfileViewerProps> = ({
                   width="140"
                   height="22"
                   rx="4"
-                  fill="rgba(9, 13, 22, 0.94)"
-                  stroke="#38bdf8"
+                  fill="rgba(20, 21, 24, 0.96)"
+                  stroke="rgba(255, 255, 255, 0.2)"
                   strokeWidth="1"
                 />
                 <text

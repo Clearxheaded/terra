@@ -53,6 +53,7 @@ export class TerrainViewer {
   private sunLight: THREE.DirectionalLight | null = null;
   private fillLight: THREE.DirectionalLight | null = null;
   private ambientLight: THREE.AmbientLight | null = null;
+  private referenceGrid: THREE.GridHelper | null = null;
 
   private currentMesh: THREE.Mesh | null = null;
   private currentGeometry: THREE.BufferGeometry | null = null;
@@ -92,7 +93,12 @@ export class TerrainViewer {
 
     // Scene setup
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color('#0d1117');
+    this.scene.background = new THREE.Color('#0f1013');
+
+    // Subtle spatial reference grid beneath terrain datum
+    this.referenceGrid = new THREE.GridHelper(130, 16, 0x2b2f38, 0x1a1d23);
+    this.referenceGrid.position.y = -0.08;
+    this.scene.add(this.referenceGrid);
 
     // Camera setup
     const aspect = this.container.clientWidth / Math.max(this.container.clientHeight, 1);
@@ -607,6 +613,15 @@ export class TerrainViewer {
   }
 
   /**
+   * Toggles the spatial reference datum grid beneath the terrain mesh.
+   */
+  setShowGrid(enabled: boolean): void {
+    if (this.referenceGrid) {
+      this.referenceGrid.visible = enabled;
+    }
+  }
+
+  /**
    * Centers and repositions the camera for optimal terrain inspection,
    * dynamically framing the current mesh extent.
    */
@@ -813,6 +828,13 @@ export class TerrainViewer {
     this.resizeObserver.disconnect();
     this.controls.dispose();
     this.clearCurrentMesh();
+
+    if (this.referenceGrid) {
+      this.scene.remove(this.referenceGrid);
+      this.referenceGrid.geometry.dispose();
+      (this.referenceGrid.material as THREE.Material).dispose();
+      this.referenceGrid = null;
+    }
 
     this.renderer.dispose();
     if (this.renderer.domElement.parentElement) {

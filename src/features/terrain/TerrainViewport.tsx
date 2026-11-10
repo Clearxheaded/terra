@@ -19,6 +19,7 @@ export interface TerrainViewportProps {
   sunAltitude: number;
   verticalExaggeration: number;
   wireframe: boolean;
+  showGrid?: boolean;
   isLoading: boolean;
   errorMessage: string | null;
   resetCameraTrigger: number;
@@ -60,6 +61,7 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
   sunAltitude,
   verticalExaggeration,
   wireframe,
+  showGrid = true,
   isLoading,
   errorMessage,
   resetCameraTrigger,
@@ -202,6 +204,12 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
     viewerRef.current.setWireframe(wireframe);
   }, [wireframe]);
 
+  // Update datum reference grid visibility
+  useEffect(() => {
+    if (!viewerRef.current) return;
+    viewerRef.current.setShowGrid(showGrid);
+  }, [showGrid]);
+
   // Reset camera trigger
   useEffect(() => {
     if (!viewerRef.current || resetCameraTrigger === 0) return;
@@ -326,6 +334,7 @@ export const TerrainViewport: React.FC<TerrainViewportProps> = ({
 
       {/* Real-time Coordinate & Terrain HUD + Camera Presets */}
       <TerrainHUD
+        grid={grid}
         hoverData={hoverData}
         activeMode={activeMode}
         onSetCameraPreset={onSetCameraPreset}
