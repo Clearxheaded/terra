@@ -8,7 +8,7 @@ test.describe('Terra Geospatial Application', () => {
   });
 
   test('initializes application header, branding, and WebGL canvas', async ({ page }) => {
-    // Brand title & release badge
+    // Brand title & release tag
     await expect(page.locator('.brand-title')).toHaveText('TERRA');
     await expect(page.locator('.brand-tag')).toContainText('Release');
 
@@ -25,6 +25,8 @@ test.describe('Terra Geospatial Application', () => {
   });
 
   test('switches between synthetic terrain models', async ({ page }) => {
+    await page.locator('[data-testid="rail-tab-data"]').click();
+
     // Select Valley
     await page.getByRole('button', { name: 'Valley' }).click();
     await expect(page.locator('.header-meta-value').first()).toContainText('Synthetic Valley');
@@ -39,6 +41,8 @@ test.describe('Terra Geospatial Application', () => {
   });
 
   test('loads open sample DEM datasets (Mount St. Helens & Eagle Creek Basin)', async ({ page }) => {
+    await page.locator('[data-testid="rail-tab-data"]').click();
+
     // Click Mount St. Helens sample button
     const mshButton = page.locator('[data-testid="sample-mount-st-helens"]');
     await expect(mshButton).toBeVisible();
@@ -58,9 +62,12 @@ test.describe('Terra Geospatial Application', () => {
   });
 
   test('switches analysis layers and updates active visualization', async ({ page }) => {
-    // Load Mount St. Helens for analysis testing
+    // Load Mount St. Helens via Data tab, then switch to Layers tab
+    await page.locator('[data-testid="rail-tab-data"]').click();
     await page.locator('[data-testid="sample-mount-st-helens"]').click();
     await expect(page.locator('.header-meta')).toContainText('Mount St. Helens', { timeout: 10000 });
+
+    await page.locator('[data-testid="rail-tab-layers"]').click();
 
     // Switch to Slope layer
     const slopeTab = page.locator('.layer-tab', { hasText: 'Slope' });
@@ -90,6 +97,7 @@ test.describe('Terra Geospatial Application', () => {
   });
 
   test('applies camera presets and resets orientation', async ({ page }) => {
+    await page.locator('[data-testid="rail-tab-scene"]').click();
     const sidebar = page.locator('.app-sidebar');
 
     // Camera presets section in sidebar
@@ -111,6 +119,8 @@ test.describe('Terra Geospatial Application', () => {
   });
 
   test('activates and cancels elevation profile transect tool', async ({ page }) => {
+    await page.locator('[data-testid="rail-tab-profile"]').click();
+
     const drawTransectBtn = page.getByRole('button', { name: /Draw 2D Profile Transect/i });
     await expect(drawTransectBtn).toBeVisible();
     await drawTransectBtn.click();
@@ -127,6 +137,8 @@ test.describe('Terra Geospatial Application', () => {
   });
 
   test('verifies export panel controls and options', async ({ page }) => {
+    await page.locator('[data-testid="rail-tab-export"]').click();
+
     // Export section should be present in sidebar
     await expect(page.getByRole('heading', { name: 'Geospatial Data Export' })).toBeVisible();
 
@@ -135,7 +147,7 @@ test.describe('Terra Geospatial Application', () => {
     await expect(page.getByRole('button', { name: /Capture Viewport \(PNG\)/i })).toBeVisible();
   });
 
-  test('verifies social metadata, HiDPI viewport quality toggle, and drag-and-drop dropzone', async ({ page }) => {
+  test('verifies social metadata, HiDPI viewport quality toggle, scale bar, and drag-and-drop dropzone', async ({ page }) => {
     // Social metadata verification in DOM head
     const ogTitle = page.locator('meta[property="og:title"]');
     await expect(ogTitle).toHaveAttribute('content', /Terra — 3D Terrain & Geospatial Analysis/);
@@ -145,6 +157,9 @@ test.describe('Terra Geospatial Application', () => {
 
     const favicon = page.locator('link[type="image/svg+xml"]');
     await expect(favicon).toHaveAttribute('href', /favicon\.svg/);
+
+    // Scale bar in bottom status bar
+    await expect(page.locator('.scale-bar-widget')).toBeVisible();
 
     // HiDPI quality toggle in viewport HUD
     const hidpiBtn = page.getByRole('button', { name: /HiDPI|1×/i });

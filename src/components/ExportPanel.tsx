@@ -65,7 +65,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
         includeScaleBar,
         includeCompass,
       });
-      showStatus('Viewport PNG captured and downloaded successfully');
+      showStatus('Viewport PNG saved');
     } catch (err) {
       showStatus(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
@@ -77,7 +77,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
       const dataToExport = activeLayerData ?? grid.data;
       const layerName = activeLayer.replace(/[^a-zA-Z0-9_-]/g, '_');
       exportLayerToGeoTIFF(grid, dataToExport, `terra-${layerName}.tif`);
-      showStatus(`Exported 32-bit Float GeoTIFF (${activeLayer})`);
+      showStatus(`Exported 32-bit GeoTIFF (${activeLayer})`);
     } catch (err) {
       showStatus(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
@@ -88,7 +88,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
     try {
       const geojson = exportStreamsToGeoJSON(grid, flowDirData, flowAccumData, streamThreshold);
       downloadGeoJSON(geojson, `terra-streams-thresh${streamThreshold}.geojson`);
-      showStatus(`Exported ${geojson.features.length} stream channels as GeoJSON`);
+      showStatus(`Exported ${geojson.features.length} stream channels`);
     } catch (err) {
       showStatus(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
@@ -104,7 +104,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
         watershedAreaKm2 ?? 0
       );
       downloadGeoJSON(geojson, `terra-watershed-basin.geojson`);
-      showStatus('Exported delineated watershed boundary polygon as GeoJSON');
+      showStatus('Exported watershed polygon GeoJSON');
     } catch (err) {
       showStatus(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
@@ -114,7 +114,7 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
     if (!profileResult) return;
     try {
       exportProfileToCsv(profileResult, `terra-elevation-profile.csv`);
-      showStatus(`Exported ${profileResult.points.length} profile data points as CSV`);
+      showStatus(`Exported ${profileResult.points.length} profile samples`);
     } catch (err) {
       showStatus(`Export failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
@@ -124,143 +124,113 @@ export const ExportPanel: React.FC<ExportPanelProps> = ({
   const hasWatershed = watershedMask && pourPoint;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+    <div className="panel-stack">
       <h2 className="section-title">Geospatial Data Export</h2>
 
       {statusMessage && (
-        <div
-          className="alert alert-info"
-          style={{
-            marginBottom: '0.75rem',
-            padding: '0.5rem 0.75rem',
-            fontSize: '0.78rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.45rem',
-          }}
-        >
-          <IconDownload size={14} className="text-emerald" />
+        <div className="alert alert-info" style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+          <IconDownload size={13} className="text-accent" />
           <span>{statusMessage}</span>
         </div>
       )}
 
       {/* Viewport PNG */}
-      <div className="control-group" style={{ marginBottom: '0.85rem' }}>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '0.4rem',
-          }}
-        >
-          <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>High-Res Viewport Image</span>
+      <div className="panel-subsection" style={{ borderTop: 'none', paddingTop: 0 }}>
+        <div className="subsection-label" style={{ marginBottom: '0.45rem' }}>
+          Rendered Viewport
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.5rem', fontSize: '0.78rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+        <div className="checkbox-row">
+          <label className="checkbox-label">
             <input
               type="checkbox"
               checked={includeScaleBar}
               onChange={(e) => setIncludeScaleBar(e.target.checked)}
             />
-            Scale Bar
+            <span>Scale bar</span>
           </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer' }}>
+          <label className="checkbox-label">
             <input
               type="checkbox"
               checked={includeCompass}
               onChange={(e) => setIncludeCompass(e.target.checked)}
             />
-            Compass Rose
+            <span>Compass</span>
           </label>
         </div>
         <button
           type="button"
-          className="button button-sm button-secondary"
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem' }}
+          className="button button-sm button-secondary button-full"
           onClick={handleExportPng}
           disabled={!grid}
         >
-          <IconCamera size={14} />
+          <IconCamera size={13} />
           <span>Capture Viewport (PNG)</span>
         </button>
       </div>
 
       {/* Raster GeoTIFF */}
-      <div className="control-group" style={{ marginBottom: '0.85rem' }}>
+      <div className="panel-subsection">
+        <div className="subsection-label" style={{ marginBottom: '0.45rem' }}>
+          Raster Output
+        </div>
         <button
           type="button"
-          className="button button-sm button-secondary"
-          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.45rem' }}
+          className="button button-sm button-secondary button-full"
           onClick={handleExportGeoTIFF}
           disabled={!grid}
           title="Encode active raster layer into 32-bit floating point GeoTIFF"
         >
-          <IconMap size={14} />
+          <IconMap size={13} />
           <span>Export Active Layer (GeoTIFF)</span>
         </button>
-        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-          Active: <strong>{activeLayer}</strong> (32-bit float, georeferenced)
-        </div>
+        <p className="panel-helper-text">
+          Active: <strong className="monospace">{activeLayer}</strong> (Float32)
+        </p>
       </div>
 
       {/* Vector GeoJSON */}
-      <div className="control-group" style={{ marginBottom: '0.85rem' }}>
-        <button
-          type="button"
-          className="button button-sm button-secondary"
-          style={{
-            width: '100%',
-            marginBottom: '0.4rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.45rem',
-          }}
-          onClick={handleExportStreamsGeoJSON}
-          disabled={!hasStreams}
-          title="Export drainage channels as GeoJSON LineStrings"
-        >
-          <IconStream size={14} />
-          <span>Export Streams (GeoJSON)</span>
-        </button>
+      <div className="panel-subsection">
+        <div className="subsection-label" style={{ marginBottom: '0.45rem' }}>
+          Vector Hydrology
+        </div>
+        <div className="stack-sm">
+          <button
+            type="button"
+            className="button button-sm button-secondary button-full"
+            onClick={handleExportStreamsGeoJSON}
+            disabled={!hasStreams}
+            title="Export drainage channels as GeoJSON LineStrings"
+          >
+            <IconStream size={13} />
+            <span>Export Streams (GeoJSON)</span>
+          </button>
 
-        <button
-          type="button"
-          className="button button-sm button-secondary"
-          style={{
-            width: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.45rem',
-          }}
-          onClick={handleExportWatershedGeoJSON}
-          disabled={!hasWatershed}
-          title="Export delineated watershed basin as GeoJSON Polygon"
-        >
-          <IconTarget size={14} />
-          <span>Export Watershed (GeoJSON)</span>
-        </button>
+          <button
+            type="button"
+            className="button button-sm button-secondary button-full"
+            onClick={handleExportWatershedGeoJSON}
+            disabled={!hasWatershed}
+            title="Export delineated watershed basin as GeoJSON Polygon"
+          >
+            <IconTarget size={13} />
+            <span>Export Watershed (GeoJSON)</span>
+          </button>
+        </div>
       </div>
 
       {/* Elevation Profile CSV */}
       {profileResult && (
-        <div className="control-group">
+        <div className="panel-subsection">
+          <div className="subsection-label" style={{ marginBottom: '0.45rem' }}>
+            Transect Table
+          </div>
           <button
             type="button"
-            className="button button-sm button-secondary"
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.45rem',
-            }}
+            className="button button-sm button-secondary button-full"
             onClick={handleExportProfileCsv}
             title="Download sampled transect points with elevation, distance, and slope"
           >
-            <IconFileCsv size={14} />
+            <IconFileCsv size={13} />
             <span>Export Profile (CSV)</span>
           </button>
         </div>

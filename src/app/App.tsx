@@ -45,6 +45,7 @@ export const App: React.FC = () => {
 
   const [verticalExaggeration, setVerticalExaggeration] = useState(1.5);
   const [wireframe, setWireframe] = useState(false);
+  const [showGrid, setShowGrid] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [resetCameraTrigger, setResetCameraTrigger] = useState(0);
@@ -499,7 +500,13 @@ export const App: React.FC = () => {
       {/* Full-Viewport Drag & Drop Overlay */}
       <DragDropOverlay isDragging={isDraggingFile} />
 
-      <Header grid={grid} />
+      <Header
+        grid={grid}
+        onFileUpload={handleFileUpload}
+        onLoadSampleFile={handleLoadSampleFile}
+        onLoadSynthetic={handleLoadSynthetic}
+        isLoading={isLoading}
+      />
 
       <div className="app-body">
         <Sidebar
@@ -522,6 +529,8 @@ export const App: React.FC = () => {
           onVerticalExaggerationChange={setVerticalExaggeration}
           wireframe={wireframe}
           onWireframeChange={setWireframe}
+          showGrid={showGrid}
+          onShowGridChange={setShowGrid}
           isBlendingEnabled={isBlendingEnabled}
           onToggleBlending={setIsBlendingEnabled}
           baseLayer={baseLayer}
@@ -571,6 +580,7 @@ export const App: React.FC = () => {
             sunAltitude={sunAltitude}
             verticalExaggeration={verticalExaggeration}
             wireframe={wireframe}
+            showGrid={showGrid}
             isLoading={isLoading}
             errorMessage={errorMessage}
             resetCameraTrigger={resetCameraTrigger}

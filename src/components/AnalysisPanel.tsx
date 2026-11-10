@@ -9,16 +9,6 @@ import type {
 } from '@/features/analysis/types';
 import { azimuthToCompass } from '@/features/analysis/aspect';
 import type { ElevationGrid } from '@/lib/geospatial/elevation-grid';
-import {
-  IconCompass,
-  IconDroplet,
-  IconEye,
-  IconEyeOff,
-  IconMountain,
-  IconSlope,
-  IconStream,
-  IconSun,
-} from './common/Icons';
 
 interface AnalysisPanelProps {
   grid: ElevationGrid | null;
@@ -52,7 +42,6 @@ interface LayerItemDef {
   label: string;
   sublabel: string;
   shortcut: string;
-  icon: React.ReactNode;
   gradientClass: string;
 }
 
@@ -60,41 +49,36 @@ const LAYER_DEFS: LayerItemDef[] = [
   {
     id: 'elevation',
     label: 'Elevation',
-    sublabel: 'Hypsometric tint',
+    sublabel: 'Hypsometric',
     shortcut: '1',
-    icon: <IconMountain size={15} />,
     gradientClass: 'legend-bar-elevation',
   },
   {
     id: 'slope',
     label: 'Slope',
-    sublabel: "Horn's gradient",
+    sublabel: "Horn 3×3",
     shortcut: '2',
-    icon: <IconSlope size={15} />,
     gradientClass: 'legend-bar-slope',
   },
   {
     id: 'aspect',
     label: 'Aspect',
-    sublabel: 'Compass azimuth',
+    sublabel: 'Azimuth',
     shortcut: '3',
-    icon: <IconCompass size={15} />,
     gradientClass: 'legend-bar-aspect',
   },
   {
     id: 'hillshade',
     label: 'Hillshade',
-    sublabel: 'Solar reflectance',
+    sublabel: 'Lambertian',
     shortcut: '4',
-    icon: <IconSun size={15} />,
     gradientClass: 'legend-bar-hillshade',
   },
   {
     id: 'd8-flow',
     label: 'D8 Flow',
-    sublabel: 'Steepest descent',
+    sublabel: 'Direction',
     shortcut: '5',
-    icon: <IconDroplet size={15} />,
     gradientClass: 'legend-bar-d8-flow',
   },
   {
@@ -102,7 +86,6 @@ const LAYER_DEFS: LayerItemDef[] = [
     label: 'Accum',
     sublabel: 'Drainage area',
     shortcut: '6',
-    icon: <IconStream size={15} />,
     gradientClass: 'legend-bar-flow-accumulation',
   },
 ];
@@ -136,76 +119,43 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   const compassDirection = azimuthToCompass(sunAzimuth);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-      {/* Kepler.gl Inspired Layer Manager Stack */}
+    <div className="panel-stack">
+      {/* Surface Layer Selector */}
       <div>
         <div className="section-title">
-          <span>Surface Layer Stack</span>
-          <span style={{ fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-muted)' }}>
-            Keys 1–6
-          </span>
+          <span>Surface Layer</span>
+          <span className="section-hint">Keys 1–6</span>
         </div>
 
-        <div className="kepler-layer-stack">
+        <div className="layer-list" role="radiogroup" aria-label="Surface analysis layer">
           {LAYER_DEFS.map((layer) => {
             const isActive = activeLayer === layer.id;
             return (
-              <div
+              <button
                 key={layer.id}
-                className={`kepler-layer-row ${isActive ? 'active' : ''}`}
+                type="button"
+                role="radio"
+                aria-checked={isActive}
+                className={`layer-tab ${isActive ? 'active' : ''}`}
                 onClick={() => onLayerChange(layer.id)}
               >
-                {/* Visibility Toggle Button */}
-                <button
-                  type="button"
-                  className="layer-visibility-toggle"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLayerChange(layer.id);
-                  }}
-                  title={isActive ? 'Active layer' : `Switch to ${layer.label}`}
-                >
-                  {isActive ? (
-                    <IconEye size={15} className="text-emerald" />
-                  ) : (
-                    <IconEyeOff size={15} className="text-muted" />
-                  )}
-                </button>
-
-                {/* Layer tab button for test compatibility and clean semantics */}
-                <button
-                  type="button"
-                  className={`layer-tab ${isActive ? 'active' : ''}`}
-                  onClick={() => onLayerChange(layer.id)}
-                >
-                  <span className="layer-tab-chip">
-                    <span className={`layer-ramp-swatch ${layer.gradientClass}`} />
-                  </span>
-                  <span className="layer-tab-icon">{layer.icon}</span>
-                  <div className="layer-tab-info">
-                    <span className="layer-tab-label">{layer.label}</span>
-                    <span className="layer-tab-sublabel">{layer.sublabel}</span>
-                  </div>
-                  <span className="layer-tab-badge">{layer.shortcut}</span>
-                </button>
-              </div>
+                <span className="layer-tab-chip">
+                  <span className={`layer-ramp-swatch ${layer.gradientClass}`} />
+                </span>
+                <span className="layer-tab-label">{layer.label}</span>
+                <span className="layer-tab-sublabel">{layer.sublabel}</span>
+                <kbd className="layer-tab-key">{layer.shortcut}</kbd>
+              </button>
             );
           })}
         </div>
       </div>
 
-      {/* Dynamic Layer Color Ramp Legend */}
+      {/* Active Color Ramp Legend */}
       <div className="legend-card">
         <div className="legend-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ textTransform: 'capitalize', fontWeight: 600 }}>
-              {activeLayer.replace('-', ' ')}
-            </span>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Legend</span>
-          </div>
-          {activeLayer === 'slope' && (
-            <span className="control-value">{slopeUnit}</span>
-          )}
+          <span>{activeLayer.replace('-', ' ')} scale</span>
+          {activeLayer === 'slope' && <span className="monospace">{slopeUnit}</span>}
         </div>
 
         {activeLayer === 'elevation' && (
@@ -234,11 +184,11 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           <>
             <div className="legend-bar legend-bar-aspect" />
             <div className="legend-labels">
-              <span>N (0°)</span>
-              <span>E (90°)</span>
-              <span>S (180°)</span>
-              <span>W (270°)</span>
-              <span>N (360°)</span>
+              <span>N</span>
+              <span>E</span>
+              <span>S</span>
+              <span>W</span>
+              <span>N</span>
             </div>
           </>
         )}
@@ -247,9 +197,9 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           <>
             <div className="legend-bar legend-bar-hillshade" />
             <div className="legend-labels">
-              <span>0 (Shadow)</span>
-              <span>128 (Neutral)</span>
-              <span>255 (Illuminated)</span>
+              <span>0</span>
+              <span>128</span>
+              <span>255</span>
             </div>
           </>
         )}
@@ -274,21 +224,19 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           <>
             <div className="legend-bar legend-bar-flow-accumulation" />
             <div className="legend-labels">
-              <span>1 (Ridge)</span>
-              <span>100 (Stream)</span>
-              <span>
-                {flowAccumMax ? `${Math.round(flowAccumMax).toLocaleString()} (River)` : 'Max'}
-              </span>
+              <span>1</span>
+              <span>100</span>
+              <span>{flowAccumMax ? Math.round(flowAccumMax).toLocaleString() : 'Max'}</span>
             </div>
           </>
         )}
       </div>
 
-      {/* Layer-Specific Parameter Controls */}
+      {/* Contextual Layer Parameters */}
       {activeLayer === 'slope' && (
-        <div className="control-group">
+        <div className="control-block">
           <div className="control-label">
-            <span>Slope Measurement Unit</span>
+            <span>Slope unit</span>
           </div>
           <div className="segmented-control">
             <button
@@ -307,136 +255,97 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
             </button>
           </div>
           {slopeResult && (
-            <div
-              style={{
-                marginTop: '0.5rem',
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.35rem',
-                fontSize: '0.74rem',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <div>
-                Mean:{' '}
-                <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+            <div className="inline-stat-row">
+              <span>
+                Mean{' '}
+                <strong className="monospace">
                   {slopeResult.mean.toFixed(1)}
                   {slopeUnit === 'degrees' ? '°' : '%'}
                 </strong>
-              </div>
-              <div>
-                Max:{' '}
-                <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+              </span>
+              <span>
+                Max{' '}
+                <strong className="monospace">
                   {slopeResult.max.toFixed(1)}
                   {slopeUnit === 'degrees' ? '°' : '%'}
                 </strong>
-              </div>
+              </span>
             </div>
           )}
         </div>
       )}
 
       {activeLayer === 'aspect' && aspectResult && (
-        <div className="control-group">
-          <div className="section-title">Aspect Surface Summary</div>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '0.35rem',
-              fontSize: '0.74rem',
-              color: 'var(--text-muted)',
-            }}
-          >
-            <div>
-              Flat cells:{' '}
-              <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
-                {aspectResult.flatCount.toLocaleString()}
-              </strong>
-            </div>
-            <div>
-              Valid slopes:{' '}
-              <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
+        <div className="control-block">
+          <div className="inline-stat-row">
+            <span>
+              Flat cells <strong className="monospace">{aspectResult.flatCount.toLocaleString()}</strong>
+            </span>
+            <span>
+              Sloped{' '}
+              <strong className="monospace">
                 {(aspectResult.data.length - aspectResult.flatCount).toLocaleString()}
               </strong>
-            </div>
+            </span>
           </div>
         </div>
       )}
 
       {activeLayer === 'hillshade' && (
-        <div>
+        <div className="control-block">
           <div className="control-group">
             <div className="control-label">
-              <span>Sun Azimuth</span>
+              <span>Sun azimuth</span>
               <span className="control-value">
-                {sunAzimuth}° ({compassDirection})
+                {sunAzimuth}° {compassDirection}
               </span>
             </div>
-            <div className="slider-container">
-              <input
-                type="range"
-                min="0"
-                max="360"
-                step="1"
-                className="slider"
-                value={sunAzimuth}
-                onChange={(e) => onSunAzimuthChange(parseInt(e.target.value, 10))}
-              />
-            </div>
+            <input
+              type="range"
+              min="0"
+              max="360"
+              step="1"
+              className="slider"
+              value={sunAzimuth}
+              onChange={(e) => onSunAzimuthChange(parseInt(e.target.value, 10))}
+            />
           </div>
 
           <div className="control-group">
             <div className="control-label">
-              <span>Sun Altitude</span>
+              <span>Sun altitude</span>
               <span className="control-value">{sunAltitude}°</span>
             </div>
-            <div className="slider-container">
-              <input
-                type="range"
-                min="0"
-                max="90"
-                step="1"
-                className="slider"
-                value={sunAltitude}
-                onChange={(e) => onSunAltitudeChange(parseInt(e.target.value, 10))}
-              />
-            </div>
+            <input
+              type="range"
+              min="0"
+              max="90"
+              step="1"
+              className="slider"
+              value={sunAltitude}
+              onChange={(e) => onSunAltitudeChange(parseInt(e.target.value, 10))}
+            />
           </div>
 
           {hillshadeResult && (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '0.35rem',
-                fontSize: '0.74rem',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <div>
-                Min Shade:{' '}
-                <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
-                  {hillshadeResult.min}
-                </strong>
-              </div>
-              <div>
-                Max Shade:{' '}
-                <strong className="monospace" style={{ color: 'var(--text-primary)' }}>
-                  {hillshadeResult.max}
-                </strong>
-              </div>
+            <div className="inline-stat-row">
+              <span>
+                Min <strong className="monospace">{hillshadeResult.min}</strong>
+              </span>
+              <span>
+                Max <strong className="monospace">{hillshadeResult.max}</strong>
+              </span>
             </div>
           )}
         </div>
       )}
 
-      {/* Kepler.gl Multi-Layer Blending Stack */}
+      {/* Multi-Layer Compositing */}
       {onToggleBlending && (
-        <div className="inspection-card" style={{ marginTop: '0.2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>Multi-Layer Blending</span>
-            <div className="segmented-control" style={{ width: '100px' }}>
+        <div className="panel-subsection">
+          <div className="toggle-row">
+            <span className="subsection-label">Layer compositing</span>
+            <div className="segmented-control" style={{ width: '92px' }}>
               <button
                 type="button"
                 className={`segmented-btn ${!isBlendingEnabled ? 'active' : ''}`}
@@ -455,34 +364,25 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           </div>
 
           {isBlendingEnabled && (
-            <div
-              style={{
-                marginTop: '0.65rem',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '0.45rem',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Base Layer:</span>
+            <div className="blend-controls">
+              <div className="form-row">
+                <span className="form-row-label">Base</span>
                 <select
                   value={baseLayer}
                   onChange={(e) => onBaseLayerChange?.(e.target.value as BaseLayerType)}
                   className="dropdown-select"
-                  style={{ width: '135px' }}
                 >
                   <option value="elevation">Elevation</option>
                   <option value="hillshade">Hillshade</option>
                 </select>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Overlay Layer:</span>
+              <div className="form-row">
+                <span className="form-row-label">Overlay</span>
                 <select
                   value={overlayLayer}
                   onChange={(e) => onOverlayLayerChange?.(e.target.value as OverlayLayerType)}
                   className="dropdown-select"
-                  style={{ width: '135px' }}
                 >
                   <option value="none">None</option>
                   <option value="slope">Slope</option>
@@ -493,37 +393,34 @@ export const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                 </select>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Blend Mode:</span>
+              <div className="form-row">
+                <span className="form-row-label">Blend</span>
                 <select
                   value={blendMode}
                   onChange={(e) => onBlendModeChange?.(e.target.value as BlendMode)}
                   className="dropdown-select"
-                  style={{ width: '135px' }}
                 >
-                  <option value="multiply">Multiply (Shading)</option>
-                  <option value="screen">Screen (Lighten)</option>
-                  <option value="overlay">Overlay (Contrast)</option>
-                  <option value="normal">Normal (Alpha Blend)</option>
+                  <option value="multiply">Multiply</option>
+                  <option value="screen">Screen</option>
+                  <option value="overlay">Overlay</option>
+                  <option value="normal">Normal</option>
                 </select>
               </div>
 
-              <div style={{ marginTop: '0.2rem' }}>
+              <div className="control-group" style={{ marginBottom: 0 }}>
                 <div className="control-label">
-                  <span>Overlay Opacity</span>
+                  <span>Opacity</span>
                   <span className="control-value">{Math.round(overlayOpacity * 100)}%</span>
                 </div>
-                <div className="slider-container">
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    className="slider"
-                    value={overlayOpacity}
-                    onChange={(e) => onOverlayOpacityChange?.(parseFloat(e.target.value))}
-                  />
-                </div>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  className="slider"
+                  value={overlayOpacity}
+                  onChange={(e) => onOverlayOpacityChange?.(parseFloat(e.target.value))}
+                />
               </div>
             </div>
           )}
